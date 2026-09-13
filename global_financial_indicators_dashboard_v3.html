@@ -1,0 +1,2405 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Global Financial Indicators & Market Indices Dashboard v3</title>
+<meta name="description" content="글로벌 금융지표 및 국내외 주요 주가지수(S&P500, 나스닥, 다우, 코스피, 코스닥 등) 실시간·시계열 대시보드 v3">
+
+<!-- Fonts & Libraries -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface-card: #1c2128;
+    --surface-hover: #22272e;
+    --border: #30363d;
+    --border-subtle: #21262d;
+    --text-primary: #f0f6fc;
+    --text-secondary: #8b949e;
+    --text-muted: #6e7681;
+    
+    --accent: #388bfd;
+    --accent-glow: rgba(56, 139, 253, 0.15);
+    --up: #f85149;         /* 증시 상승 (한국/동아시아 레드) */
+    --down: #3fb950;       /* 증시 하락 (한국/동아시아 블루/그린 분기 or 글로벌 그린) */
+    --kr-up: #f85149;
+    --kr-down: #58a6ff;
+    --gold: #d29922;
+    --purple: #bc8cff;
+    --cyan: #39c5cf;
+    --teal: #2ea043;
+    
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  [data-theme="light"] {
+    --bg: #f6f8fa;
+    --surface: #ffffff;
+    --surface-card: #ffffff;
+    --surface-hover: #f3f4f6;
+    --border: #d0d7de;
+    --border-subtle: #eaeef2;
+    --text-primary: #1f2328;
+    --text-secondary: #57606a;
+    --text-muted: #8c959f;
+    --accent: #0969da;
+    --accent-glow: rgba(9, 105, 218, 0.12);
+    --up: #cf222e;
+    --down: #1a7f37;
+    --kr-up: #cf222e;
+    --kr-down: #0969da;
+    --gold: #9a6700;
+    --purple: #8250df;
+    --cyan: #1b7c83;
+    --teal: #1a7f37;
+    --shadow-sm: 0 1px 3px rgba(31,35,40,0.08);
+    --shadow-md: 0 4px 12px rgba(31,35,40,0.08);
+    --shadow-lg: 0 8px 24px rgba(31,35,40,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text-primary);
+    font-family: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.25s ease, color 0.25s ease;
+    overflow-x: hidden;
+  }
+
+  /* Header Container */
+  header {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px 24px 16px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .brand-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .brand-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  .version-pill {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    color: #ffffff;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .brand-sub {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .asof-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 20px;
+  }
+
+  .btn {
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-primary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: var(--transition);
+    text-decoration: none;
+  }
+  .btn:hover {
+    background: var(--surface-hover);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .btn-primary:hover {
+    background: #2a75e6;
+    color: #fff;
+  }
+
+  .spin { display: inline-block; }
+  .spinning .spin { animation: spinAnim 0.8s linear infinite; }
+  @keyframes spinAnim { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+
+  .theme-toggle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 16px;
+  }
+
+  /* Navigation Tabs */
+  nav {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 10px 24px 0;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+
+  .tab-btn {
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    padding: 10px 16px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: var(--transition);
+  }
+  .tab-btn:hover { color: var(--text-primary); }
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* Main Container */
+  main {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px 24px 80px;
+  }
+
+  .tab-panel {
+    display: none;
+  }
+  .tab-panel.active {
+    display: block;
+    animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Ticker Bar */
+  .ticker-bar {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    margin-bottom: 20px;
+    scrollbar-width: none;
+  }
+  .ticker-bar::-webkit-scrollbar { display: none; }
+
+  .ticker-chip {
+    flex: 0 0 auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 12.5px;
+  }
+  .ticker-chip:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+  .ticker-name { font-weight: 700; }
+  .ticker-val { font-family: 'Inter', monospace; font-weight: 600; }
+  .ticker-delta { font-size: 11.5px; font-weight: 600; }
+
+  /* Section Title & Grids */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 24px 0 14px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .section-header h2 {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-header p {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+  }
+
+  .grid-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  /* Metric Card */
+  .metric-card {
+    background: var(--surface-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 16px 18px;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+  }
+  .metric-card:hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+  .metric-card.highlight {
+    border-left: 4px solid var(--accent);
+  }
+
+  .metric-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .metric-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .metric-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: var(--surface-hover);
+    color: var(--text-muted);
+  }
+  .metric-value {
+    font-family: 'Inter', sans-serif;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin: 2px 0 4px;
+  }
+  .metric-unit {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-left: 2px;
+  }
+  .metric-delta {
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .metric-sub {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* Directional colors */
+  .up { color: var(--kr-up); }
+  .down { color: var(--kr-down); }
+  .flat { color: var(--text-secondary); }
+
+  /* Dots */
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot.kr { background: #388bfd; }
+  .dot.us { background: #f85149; }
+  .dot.jp { background: #e36209; }
+  .dot.eu { background: #a371f7; }
+  .dot.cn { background: #d29922; }
+  .dot.gold { background: var(--gold); }
+  .dot.oil { background: #8b949e; }
+  .dot.fx { background: #39c5cf; }
+
+  /* Content Block */
+  .content-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .block-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .block-title {
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .block-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+
+  /* Time-Series Controller Bar */
+  .ts-controls-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    background: var(--surface-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+    margin-bottom: 16px;
+  }
+  .ts-control-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .ts-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: 4px;
+  }
+  .pill-group {
+    display: inline-flex;
+    background: var(--bg);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 2px;
+  }
+  .pill-btn {
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .pill-btn:hover {
+    color: var(--text-primary);
+  }
+  .pill-btn.active {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+  }
+
+  /* Chart Wrappers */
+  .chart-container {
+    position: relative;
+    height: 320px;
+    width: 100%;
+    margin: 12px 0;
+  }
+  .chart-container.tall { height: 380px; }
+  .chart-container.short { height: 260px; }
+
+  /* Quick External Links Grid */
+  .links-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+  }
+  .link-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: var(--transition);
+  }
+  .link-card:hover {
+    border-color: var(--accent);
+    background: var(--surface-hover);
+    transform: translateX(2px);
+  }
+  .link-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .link-title {
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .link-subtitle {
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+  .link-arrow {
+    font-size: 14px;
+    color: var(--accent);
+  }
+
+  /* Stats Mini Bar */
+  .stats-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    margin-top: 12px;
+  }
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+  }
+  .stat-label { font-size: 11px; color: var(--text-muted); }
+  .stat-val { font-family: 'Inter', monospace; font-size: 14px; font-weight: 700; margin-top: 2px; }
+
+  /* Data Table */
+  .table-wrap {
+    overflow-x: auto;
+    margin-top: 12px;
+  }
+  table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  table.data-table th, table.data-table td {
+    padding: 10px 12px;
+    text-align: right;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  table.data-table th:first-child, table.data-table td:first-child {
+    text-align: left;
+  }
+  table.data-table th {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--surface-card);
+  }
+  table.data-table tr:hover td {
+    background: var(--surface-hover);
+  }
+
+  /* Formula Box (KaTeX) */
+  .formula-card {
+    background: var(--surface-card);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--gold);
+    border-radius: var(--radius-md);
+    padding: 14px 18px;
+    margin: 14px 0;
+  }
+  .formula-header {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .formula-math {
+    overflow-x: auto;
+    padding: 6px 0;
+    font-size: 14.5px;
+  }
+  .formula-exp {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-top: 6px;
+  }
+
+  /* Multi-column Layouts */
+  .grid-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 860px) {
+    .grid-2col { grid-template-columns: 1fr; }
+  }
+
+  /* Footer */
+  footer {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px 24px 60px;
+    border-top: 1px solid var(--border-subtle);
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  /* Live Tag Animation */
+  .live-pulse {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: rgba(63, 185, 80, 0.15);
+    color: #3fb950;
+    border: 1px solid rgba(63, 185, 80, 0.3);
+  }
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #3fb950;
+    animation: livePulseAnim 1.5s infinite;
+  }
+  @keyframes livePulseAnim {
+    0% { transform: scale(0.9); opacity: 0.7; }
+    50% { transform: scale(1.3); opacity: 1; }
+    100% { transform: scale(0.9); opacity: 0.7; }
+  }
+</style>
+</head>
+
+<body>
+
+<!-- Header -->
+<header>
+  <div class="brand-group">
+    <div class="brand-title">
+      <span>글로벌 금융지표 &amp; 주요 주가지수 대시보드</span>
+      <span class="version-pill">v3 Pro</span>
+    </div>
+    <div class="brand-sub">
+      S&amp;P500 · 나스닥 · 다우 · 코스피 · 코스닥 · 해외 주요지수 · 기준금리 · 미국채 · 외환 · 원자재 · 통화량
+    </div>
+  </div>
+
+  <div class="header-actions">
+    <span class="asof-badge" id="asofBadge">
+      <span>📅 기준일: 2026-09-11 (스냅샷 &amp; LIVE)</span>
+    </span>
+    <button class="btn btn-primary" id="refreshBtn" onclick="refreshLatestData()">
+      <span class="spin">🔄</span><span id="refreshBtnLabel">실시간 데이터 갱신</span>
+    </button>
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="화면 테마 전환">
+      🌙
+    </button>
+  </div>
+</header>
+
+<!-- Navigation Tabs -->
+<nav>
+  <div class="nav-tabs" id="mainTabbar">
+    <button class="tab-btn active" data-tab="overview">📊 종합 대시보드</button>
+    <button class="tab-btn" data-tab="indices">📈 주요 주가지수 (국내·글로벌)</button>
+    <button class="tab-btn" data-tab="comparison">⚖️ 지수 성과 비교</button>
+    <button class="tab-btn" data-tab="rates">🏦 기준금리</button>
+    <button class="tab-btn" data-tab="treasury">💵 미국 국채금리</button>
+    <button class="tab-btn" data-tab="fx">💱 외환</button>
+    <button class="tab-btn" data-tab="commodity">🪙 금·원자재</button>
+    <button class="tab-btn" data-tab="money">📦 한국 통화량</button>
+    <button class="tab-btn" data-tab="links">🔗 종합지수 포털 링크</button>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ==================== 1. 종합 대시보드 (OVERVIEW) ==================== -->
+  <div class="tab-panel active" id="overview">
+    
+    <!-- Ticker Bar -->
+    <div class="ticker-bar" id="tickerBar">
+      <div class="ticker-chip" onclick="quickSelectIndex('sp500')">
+        <span class="ticker-name">S&amp;P 500</span>
+        <span class="ticker-val">5,720.50</span>
+        <span class="ticker-delta up">▲ +0.65%</span>
+      </div>
+      <div class="ticker-chip" onclick="quickSelectIndex('nasdaq')">
+        <span class="ticker-name">나스닥</span>
+        <span class="ticker-val">18,125.80</span>
+        <span class="ticker-delta up">▲ +0.92%</span>
+      </div>
+      <div class="ticker-chip" onclick="quickSelectIndex('dow')">
+        <span class="ticker-name">다우존스</span>
+        <span class="ticker-val">41,480.20</span>
+        <span class="ticker-delta up">▲ +0.38%</span>
+      </div>
+      <div class="ticker-chip" onclick="quickSelectIndex('kospi')">
+        <span class="ticker-name">코스피</span>
+        <span class="ticker-val">2,682.40</span>
+        <span class="ticker-delta up">▲ +0.45%</span>
+      </div>
+      <div class="ticker-chip" onclick="quickSelectIndex('kosdaq')">
+        <span class="ticker-name">코스닥</span>
+        <span class="ticker-val">778.60</span>
+        <span class="ticker-delta down">▼ -0.22%</span>
+      </div>
+      <div class="ticker-chip" onclick="quickSelectIndex('nikkei')">
+        <span class="ticker-name">니케이225</span>
+        <span class="ticker-val">37,840.00</span>
+        <span class="ticker-delta up">▲ +0.78%</span>
+      </div>
+      <div class="ticker-chip" onclick="quickSelectIndex('eurostoxx')">
+        <span class="ticker-name">유로스톡스50</span>
+        <span class="ticker-val">4,955.30</span>
+        <span class="ticker-delta up">▲ +0.51%</span>
+      </div>
+      <div class="ticker-chip">
+        <span class="ticker-name">USD/KRW</span>
+        <span class="ticker-val" id="ticker-usdkrw">1,341원</span>
+        <span class="ticker-delta down">▼ 원화강세</span>
+      </div>
+    </div>
+
+    <!-- Section 1: Major Stock Indices Matrix -->
+    <div class="section-header">
+      <h2>📈 글로벌 &amp; 국내 주요 주가지수 현황</h2>
+      <p>클릭 시 상세 시계열 차트 및 지수 분석으로 이동합니다.</p>
+    </div>
+
+    <div class="grid-cards">
+      <!-- S&P 500 -->
+      <div class="metric-card highlight" onclick="quickSelectIndex('sp500')" style="cursor:pointer;">
+        <div class="metric-top">
+          <span class="metric-label"><span class="dot us"></span>S&amp;P 500 (US)</span>
+          <span class="metric-badge">대형주 500</span>
+        </div>
+        <div class="metric-value">5,720.50<span class="metric-unit">pt</span></div>
+        <div class="metric-delta up">▲ +36.80 (+0.65%)</div>
+        <div class="metric-sub">52주 최고 5,740 / 최저 4,288</div>
+      </div>
+
+      <!-- NASDAQ -->
+      <div class="metric-card highlight" onclick="quickSelectIndex('nasdaq')" style="cursor:pointer;">
+        <div class="metric-top">
+          <span class="metric-label"><span class="dot us"></span>나스닥 종합 (IXIC)</span>
+          <span class="metric-badge">기술·성장주</span>
+        </div>
+        <div class="metric-value">18,125.80<span class="metric-unit">pt</span></div>
+        <div class="metric-delta up">▲ +165.20 (+0.92%)</div>
+        <div class="metric-sub">AI 반도체·빅테크 주도 강세</div>
+      </div>
+
+      <!-- DOW -->
+      <div class="metric-card highlight" onclick="quickSelectIndex('dow')" style="cursor:pointer;">
+        <div class="metric-top">
+          <span class="metric-label"><span class="dot us"></span>다우존스 30 (DJIA)</span>
+          <span class="metric-badge">우량 전통주</span>
+        </div>
+        <div class="metric-value">41,480.20<span class="metric-unit">pt</span></div>
+        <div class="metric-delta up">▲ +156.40 (+0.38%)</div>
+        <div class="metric-sub">사상 최고가권 횡보 흐름</div>
+      </div>
+
+      <!-- KOSPI -->
+      <div class="metric-card highlight" onclick="quickSelectIndex('kospi')" style="cursor:pointer;">
+        <div class="metric-top">
+          <span class="metric-label"><span class="dot kr"></span>코스피 (KOSPI)</span>
+          <span class="metric-badge">한국 유가증권</span>
+        </div>
+        <div class="metric-value">2,682.40<span class="metric-unit">pt</span></div>
+        <div class="metric-delta up">▲ +12.05 (+0.45%)</div>
+        <div class="metric-sub">반도체·수출주 중심 반등</div>
+      </div>
+
+      <!-- KOSDAQ -->
+      <div class="metric-card highlight" onclick="quickSelectIndex('kosdaq')" style="cursor:pointer;">
+        <div class="metric-top">
+          <span class="metric-label"><span class="dot kr"></span>코스닥 (KOSDAQ)</span>
+          <span class="metric-badge">한국 중소·벤처</span>
+        </div>
+        <div class="metric-value">778.60<span class="metric-unit">pt</span></div>
+        <div class="metric-delta down">▼ -1.70 (-0.22%)</div>
+        <div class="metric-sub">2차전지·바이오 혼조세</div>
+      </div>
+
+      <!-- NIKKEI 225 -->
+      <div class="metric-card" onclick="quickSelectIndex('nikkei')" style="cursor:pointer;">
+        <div class="metric-top">
+          <span class="metric-label"><span class="dot jp"></span>니케이 225 (Nikkei)</span>
+          <span class="metric-badge">일본</span>
+        </div>
+        <div class="metric-value">37,840.00<span class="metric-unit">pt</span></div>
+        <div class="metric-delta up">▲ +292.00 (+0.78%)</div>
+        <div class="metric-sub">엔화 안정 속 기업실적 호조</div>
+      </div>
+
+      <!-- EURO STOXX 50 -->
+      <div class="metric-card" onclick="quickSelectIndex('eurostoxx')" style="cursor:pointer;">
+        <div class="metric-top">
+          <span class="metric-label"><span class="dot eu"></span>유로스톡스 50 (SX5E)</span>
+          <span class="metric-badge">유로존 50</span>
+        </div>
+        <div class="metric-value">4,955.30<span class="metric-unit">pt</span></div>
+        <div class="metric-delta up">▲ +25.10 (+0.51%)</div>
+        <div class="metric-sub">ECB 완화 기조 및 명품주 지지</div>
+      </div>
+
+      <!-- SHANGHAI COMPOSITE -->
+      <div class="metric-card" onclick="quickSelectIndex('shanghai')" style="cursor:pointer;">
+        <div class="metric-top">
+          <span class="metric-label"><span class="dot cn"></span>상하이종합 (SSEC)</span>
+          <span class="metric-badge">중국 본토</span>
+        </div>
+        <div class="metric-value">2,880.50<span class="metric-unit">pt</span></div>
+        <div class="metric-delta down">▼ -8.20 (-0.28%)</div>
+        <div class="metric-sub">부동산 부양책 및 경기지표 관망</div>
+      </div>
+    </div>
+
+    <!-- Section 2: Macroeconomic & Financial Indicators -->
+    <div class="section-header">
+      <h2>🏛️ 거시 금융지표 &amp; 상품·외환</h2>
+      <p>금리 정책, 미국채 수익률, 환율 및 원자재 실시간 모니터링</p>
+    </div>
+
+    <div class="grid-cards">
+      <!-- 한국 기준금리 -->
+      <div class="metric-card">
+        <div class="metric-top">
+          <span class="metric-label"><span class="dot kr"></span>한국 기준금리</span>
+          <span class="metric-badge">BOK</span>
+        </div>
+        <div class="metric-value">3.00<span class="metric-unit">%</span></div>
+        <div class="metric-delta up">▲ 0.25%p (2026.08.27 백투백 인상)</div>
+        <div class="metric-sub">다음 회의: 2026-10-22</div>
+      </div>
+
+      <!-- 미국 기준금리 -->
+      <div class="metric-card">
+        <div class="metric-top">
+          <span class="metric-label"><span class="dot us"></span>미국 기준금리 (FFR)</span>
+          <span class="metric-badge">FED</span>
+        </div>
+        <div class="metric-value">3.50–3.75<span class="metric-unit">%</span></div>
+        <div class="metric-delta flat">동결 (2026.07.29) · 한미격차 0.75%p</div>
+        <div class="metric-sub">FOMC: 2026.09.15~16 대기</div>
+      </div>
+
+      <!-- 美 10년 국채금리 -->
+      <div class="metric-card">
+        <div class="metric-top">
+          <span class="metric-label"><span class="dot us"></span>美 10년 국채수익률</span>
+          <span class="metric-badge">TNX</span>
+        </div>
+        <div class="metric-value">4.97<span class="metric-unit">%</span></div>
+        <div class="metric-delta up">▲ +0.04%p (5% 근접 고점권)</div>
+        <div class="metric-sub">장기 채권 할인율 상승 요인</div>
+      </div>
+
+      <!-- 원/달러 -->
+      <div class="metric-card">
+        <div class="metric-top">
+          <span class="metric-label"><span class="dot fx"></span>원/달러 환율</span>
+          <span class="live-pulse" id="live-fx-tag"><span class="live-dot"></span>LIVE</span>
+        </div>
+        <div class="metric-value" id="card-usdkrw">1,341<span class="metric-unit">원</span></div>
+        <div class="metric-delta down" id="card-usdkrw-delta">1개월간 1,400원선에서 하향 안정</div>
+        <div class="metric-sub" id="card-usdkrw-sub">ECB/Frankfurter API 연동</div>
+      </div>
+
+      <!-- 국제 금가격 -->
+      <div class="metric-card">
+        <div class="metric-top">
+          <span class="metric-label"><span class="dot gold"></span>국제 금시세 (원화 환산)</span>
+          <span class="live-pulse" id="live-gold-tag"><span class="live-dot"></span>LIVE</span>
+        </div>
+        <div class="metric-value" id="card-gold">189,700<span class="metric-unit">원/g</span></div>
+        <div class="metric-delta up" id="card-gold-usd">$4,400/oz 사상 최고권 유지</div>
+        <div class="metric-sub" id="card-gold-don">국내 1돈(3.75g) 약 71만원</div>
+      </div>
+
+      <!-- WTI 원유 -->
+      <div class="metric-card">
+        <div class="metric-top">
+          <span class="metric-label"><span class="dot oil"></span>WTI 원유 선물</span>
+          <span class="metric-badge">NYMEX</span>
+        </div>
+        <div class="metric-value">99.99<span class="metric-unit">$/bbl</span></div>
+        <div class="metric-delta up">중동 지정학 불안 · 연초대비 +74%</div>
+        <div class="metric-sub">인플레이션 기대심리 자극 요인</div>
+      </div>
+
+      <!-- 한국 M2 통화량 -->
+      <div class="metric-card">
+        <div class="metric-top">
+          <span class="metric-label"><span class="dot kr"></span>한국 M2 (광의통화)</span>
+          <span class="metric-badge">평잔</span>
+        </div>
+        <div class="metric-value">4,210<span class="metric-unit">조원</span></div>
+        <div class="metric-delta up">전년비 +6.0% 증가세 유지</div>
+        <div class="metric-sub">M1/M2 단기유동성 비율 33.3%</div>
+      </div>
+
+      <!-- 한미 정책금리 스프레드 -->
+      <div class="metric-card">
+        <div class="metric-top">
+          <span class="metric-label"><span class="dot fx"></span>한·미 금리 역전폭</span>
+          <span class="metric-badge">스프레드</span>
+        </div>
+        <div class="metric-value">0.75<span class="metric-unit">%p</span></div>
+        <div class="metric-delta down">한국 금리인상으로 1.00%p → 0.75%p 축소</div>
+        <div class="metric-sub">자본유출 압력 완화 요인</div>
+      </div>
+    </div>
+
+    <!-- Market Summary Narrative -->
+    <div class="content-block">
+      <div class="block-title">💡 글로벌 거시 및 주식시장 통합 브리핑</div>
+      <p class="block-desc">
+        2026년 9월 글로벌 금융시장은 미 연준(FOMC) 9월 금리결정 회의를 앞두고 자산군별 차별화 흐름이 뚜렷합니다.
+        미국 증시는 S&amp;P 500과 나스닥이 견고한 기업 실적과 AI 인프라 투자 지속에 힘입어 사상 최고가 부근을 수성하고 있으며, 다우존스 역시 41,000pt를 상회하고 있습니다.
+        국내 증시(KOSPI)는 한국은행의 7~8월 연속 금리인상(2.50% → 3.00%)에도 불구하고, 원/달러 환율이 1,400원대에서 1,340원대로 안정되면서 외국인 매수세가 재유입되어 2,680pt선을 회복했습니다.
+        장기금리는 미국의 재정적자 확대와 10년물 국채수익률 4.97% 진입 등 고금리 장기화 우려가 상존하나, 금 가격($4,400/oz선)과 에너지 가격 상승에 따른 실물 자산 헤지 수요가 동반 강세를 연출하고 있습니다.
+      </p>
+    </div>
+
+  </div>
+
+  <!-- ==================== 2. 주요 주가지수 상세 & 시계열 (INDICES) ==================== -->
+  <div class="tab-panel" id="indices">
+    
+    <div class="content-block">
+      <div class="block-title-row">
+        <div>
+          <h2 class="block-title">주요 주가지수 시계열 심층 분석</h2>
+          <p class="block-desc" style="margin-bottom:0;">지수 선택, 일/월/년 주기 설정, 단기/중기/장기 기간 필터를 통해 데이터셋을 실시간 탐색합니다.</p>
+        </div>
+        <div class="ts-control-group">
+          <select id="indexSelect" onchange="onIndexSelectChange()" style="font-family:inherit; font-size:13px; font-weight:600; padding:8px 12px; border-radius:8px; background:var(--surface-card); color:var(--text-primary); border:1px solid var(--border);">
+            <optgroup label="미국 주요 지수">
+              <option value="sp500">S&amp;P 500 (^GSPC)</option>
+              <option value="nasdaq">나스닥 종합 (^IXIC)</option>
+              <option value="dow">다우존스 산업평균 (^DJI)</option>
+            </optgroup>
+            <optgroup label="국내 주요 지수">
+              <option value="kospi">코스피 (KOSPI)</option>
+              <option value="kosdaq">코스닥 (KOSDAQ)</option>
+            </optgroup>
+            <optgroup label="해외 주요 지수">
+              <option value="nikkei">일본 니케이 225 (^N225)</option>
+              <option value="eurostoxx">유로스톡스 50 (^STOXX50E)</option>
+              <option value="shanghai">중국 상하이종합 (000001.SS)</option>
+              <option value="dax">독일 DAX 40 (^GDAXI)</option>
+              <option value="taiex">대만 가권지수 (^TWII)</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+
+      <!-- Time-Series Controls Bar (일/월/년 & 단기/중기/장기) -->
+      <div class="ts-controls-bar">
+        <!-- Granularity (주기: 일/월/년) -->
+        <div class="ts-control-group">
+          <span class="ts-label">데이터 주기 (주기)</span>
+          <div class="pill-group" id="granularityGroup">
+            <button class="pill-btn active" onclick="setTimeGranularity('daily')">일 (Daily)</button>
+            <button class="pill-btn" onclick="setTimeGranularity('monthly')">월 (Monthly)</button>
+            <button class="pill-btn" onclick="setTimeGranularity('yearly')">년 (Yearly)</button>
+          </div>
+        </div>
+
+        <!-- Period Horizon (기간: 단기/중기/장기) -->
+        <div class="ts-control-group">
+          <span class="ts-label">조회 기간 (Horizon)</span>
+          <div class="pill-group" id="horizonGroup">
+            <button class="pill-btn active" onclick="setTimeHorizon('short')">단기 (Short / 1M)</button>
+            <button class="pill-btn" onclick="setTimeHorizon('mid')">중기 (Mid / 1Y)</button>
+            <button class="pill-btn" onclick="setTimeHorizon('long')">장기 (Long / 10Y)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Chart Area -->
+      <div class="chart-container tall">
+        <canvas id="chartStockIndex"></canvas>
+      </div>
+
+      <!-- Dynamic Statistics Strip -->
+      <div class="stats-strip" id="indexStatsStrip">
+        <div class="stat-item">
+          <span class="stat-label">선택 지수 현재가</span>
+          <span class="stat-val" id="stat-current">-</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">기간 변동폭 / 수익률</span>
+          <span class="stat-val" id="stat-return">-</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">기간 최고치 (High)</span>
+          <span class="stat-val" id="stat-high">-</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">기간 최저치 (Low)</span>
+          <span class="stat-val" id="stat-low">-</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">기간 변동성 / CAGR</span>
+          <span class="stat-val" id="stat-cagr">-</span>
+        </div>
+      </div>
+
+      <!-- Direct Index Portal Link -->
+      <div style="margin-top: 14px; display: flex; align-items:center; justify-content: flex-end; gap: 10px;">
+        <span style="font-size: 12px; color: var(--text-secondary);">해당 지수 실시간 종합 링크:</span>
+        <a href="#" id="dynamicIndexLinkGoogle" target="_blank" class="btn" style="padding:4px 10px; font-size:11.5px;">Google Finance ↗</a>
+        <a href="#" id="dynamicIndexLinkYahoo" target="_blank" class="btn" style="padding:4px 10px; font-size:11.5px;">Yahoo Finance ↗</a>
+        <a href="#" id="dynamicIndexLinkNaver" target="_blank" class="btn" style="padding:4px 10px; font-size:11.5px;">네이버 증권 ↗</a>
+      </div>
+    </div>
+
+    <!-- Index Formula & Analysis Methodology -->
+    <div class="grid-2col">
+      <div class="content-block">
+        <div class="block-title">📐 주가지수 계산 방식 (시가총액가중 vs 주가가중)</div>
+        <div class="formula-card">
+          <div class="formula-header">시가총액 가중방식 (S&amp;P 500, KOSPI, NASDAQ)</div>
+          <div class="formula-math">$$ \text{Index}_t = \frac{\sum (P_{i,t} \times Q_{i,t})}{\text{Divisor}_t} \times \text{Base} $$</div>
+          <div class="formula-exp">
+            상장 주식수($Q$)와 가격($P$)의 곱인 총 시가총액을 기준시점 분모(Divisor)로 나누어 산출합니다. 기업 규모가 클수록 지수에 미치는 영향력이 정비례합니다.
+          </div>
+        </div>
+        <div class="formula-card">
+          <div class="formula-header">주가 평균 가중방식 (다우존스 30, 니케이 225)</div>
+          <div class="formula-math">$$ \text{Index}_{Price} = \frac{\sum P_{i,t}}{d_t} $$</div>
+          <div class="formula-exp">
+            구성 종목의 1주당 주가 합계를 조정 승수($d_t$)로 나눕니다. 고가주일수록 시가총액과 무관하게 지수 등락에 더 큰 비중을 갖습니다.
+          </div>
+        </div>
+      </div>
+
+      <div class="content-block">
+        <div class="block-title">📊 투자 수익률 &amp; 리스크 평가 공식</div>
+        <div class="formula-card">
+          <div class="formula-header">연평균 복리 수익률 (CAGR)</div>
+          <div class="formula-math">$$ \text{CAGR} = \left( \frac{V_{\text{final}}}{V_{\text{begin}}} \right)^{\frac{1}{N}} - 1 $$</div>
+          <div class="formula-exp">
+            $N$년 동안의 자산가치 성장률을 연복리 기준으로 표준화한 값입니다. 장기 시계열 성과 비교의 핵심 지표입니다.
+          </div>
+        </div>
+        <div class="formula-card">
+          <div class="formula-header">최대 낙폭 (Max Drawdown, MDD)</div>
+          <div class="formula-math">$$ \text{MDD} = \frac{\text{Trough Value} - \text{Peak Value}}{\text{Peak Value}} \times 100\% $$</div>
+          <div class="formula-exp">
+            특정 기간 중 최고점에서 최저점까지 기록한 최대 손실률로, 포트폴리오의 다운사이드 리스크를 측정합니다.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ==================== 3. 지수 성과 비교 (COMPARISON) ==================== -->
+  <div class="tab-panel" id="comparison">
+    <div class="content-block">
+      <div class="block-title-row">
+        <div>
+          <h2 class="block-title">글로벌 종합지수 상대 성과 비교 (Base = 100)</h2>
+          <p class="block-desc" style="margin-bottom:0;">조회 시작점을 100으로 정규화하여 주요 주가지수(코스피, S&amp;P500, 나스닥, 니케이, 유로스톡스)의 누적 수익률 궤적을 비교합니다.</p>
+        </div>
+        <div class="ts-control-group">
+          <span class="ts-label">비교 기간</span>
+          <div class="pill-group" id="compHorizonGroup">
+            <button class="pill-btn" onclick="setCompHorizon('1m')">1개월 (일별)</button>
+            <button class="pill-btn active" onclick="setCompHorizon('1y')">1년 (월별)</button>
+            <button class="pill-btn" onclick="setCompHorizon('5y')">5년 (분기/연별)</button>
+            <button class="pill-btn" onclick="setCompHorizon('10y')">10년 (연별)</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-container tall">
+        <canvas id="chartComparison"></canvas>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table" id="compTable">
+          <thead>
+            <tr>
+              <th>지수명</th>
+              <th>국가/지역</th>
+              <th>기준일 종가</th>
+              <th>1개월 수익률</th>
+              <th>1년 수익률</th>
+              <th>5년 누적수익률</th>
+              <th>10년 CAGR</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>S&amp;P 500</strong></td>
+              <td>미국 (US)</td>
+              <td>5,720.50</td>
+              <td class="up">+2.8%</td>
+              <td class="up">+26.4%</td>
+              <td class="up">+88.5%</td>
+              <td class="up">+11.8%</td>
+            </tr>
+            <tr>
+              <td><strong>나스닥 종합</strong></td>
+              <td>미국 (US)</td>
+              <td>18,125.80</td>
+              <td class="up">+3.5%</td>
+              <td class="up">+31.2%</td>
+              <td class="up">+112.4%</td>
+              <td class="up">+14.6%</td>
+            </tr>
+            <tr>
+              <td><strong>다우존스 30</strong></td>
+              <td>미국 (US)</td>
+              <td>41,480.20</td>
+              <td class="up">+1.9%</td>
+              <td class="up">+18.5%</td>
+              <td class="up">+54.2%</td>
+              <td class="up">+9.2%</td>
+            </tr>
+            <tr>
+              <td><strong>코스피 (KOSPI)</strong></td>
+              <td>한국 (KR)</td>
+              <td>2,682.40</td>
+              <td class="up">+1.2%</td>
+              <td class="up">+7.8%</td>
+              <td class="up">+16.4%</td>
+              <td class="up">+4.1%</td>
+            </tr>
+            <tr>
+              <td><strong>코스닥 (KOSDAQ)</strong></td>
+              <td>한국 (KR)</td>
+              <td>778.60</td>
+              <td class="down">-1.4%</td>
+              <td class="down">-6.2%</td>
+              <td class="up">+8.7%</td>
+              <td class="up">+2.3%</td>
+            </tr>
+            <tr>
+              <td><strong>니케이 225</strong></td>
+              <td>일본 (JP)</td>
+              <td>37,840.00</td>
+              <td class="up">+2.4%</td>
+              <td class="up">+21.0%</td>
+              <td class="up">+62.8%</td>
+              <td class="up">+8.9%</td>
+            </tr>
+            <tr>
+              <td><strong>유로스톡스 50</strong></td>
+              <td>유럽 (EU)</td>
+              <td>4,955.30</td>
+              <td class="up">+1.6%</td>
+              <td class="up">+14.8%</td>
+              <td class="up">+48.1%</td>
+              <td class="up">+6.5%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 4. 기준금리 (RATES) ==================== -->
+  <div class="tab-panel" id="rates">
+    <div class="content-block">
+      <div class="block-title-row">
+        <div>
+          <h2 class="block-title">한국은행 &amp; 미 연준 기준금리 추이</h2>
+          <p class="block-desc" style="margin-bottom:0;">한국은행 기준금리와 미 연준 정책금리(목표범위 상단 기준) 최근 24개월 시계열 및 스프레드</p>
+        </div>
+        <div class="ts-control-group">
+          <div class="pill-group" id="ratesHorizonGroup">
+            <button class="pill-btn" onclick="setRatesView('1y')">최근 1년</button>
+            <button class="pill-btn active" onclick="setRatesView('2y')">최근 2년</button>
+            <button class="pill-btn" onclick="setRatesView('5y')">5년 시계열</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-container"><canvas id="chartRates"></canvas></div>
+
+      <table class="data-table" style="margin-top:14px;">
+        <tr><th>구분</th><th>현재 수준</th><th>최근 결정일</th><th>다음 통화정책방향 회의</th><th>전망 &amp; 비고</th></tr>
+        <tr><td><strong>한국은행 기준금리</strong></td><td class="up">3.00%</td><td>2026-08-27 (+0.25%p)</td><td>2026-10-22</td><td>물가·가계부채 대응 7~8월 연속인상</td></tr>
+        <tr><td><strong>美 연준 목표범위</strong></td><td>3.50–3.75%</td><td>2026-07-29 (동결)</td><td>2026-09-15~16</td><td>노동시장 둔화와 금리인하 시점 저울질</td></tr>
+        <tr><td><strong>한미 정책금리차</strong></td><td class="down">-0.75%p</td><td>역전폭 축소</td><td>-</td><td>원화 절하 압력 일부 완화 배경</td></tr>
+      </table>
+    </div>
+
+    <div class="grid-2col">
+      <div class="content-block">
+        <div class="block-title">실질금리 (Fisher Equation)</div>
+        <div class="formula-card">
+          <div class="formula-header">FISHER EQUATION</div>
+          <div class="formula-math">$$ r \approx i - \pi^{e} $$</div>
+          <div class="formula-exp">
+            $r$ = 실질금리, $i$ = 명목금리(기준금리), $\pi^e$ = 기대 인플레이션율.<br>
+            예) 한국 근원물가 상승률이 2.6% 수준일 때 실질 기준금리 $\approx 3.00\% - 2.6\% = \mathbf{+0.4\%p}$로 긴축 영역 유지.
+          </div>
+        </div>
+      </div>
+      <div class="content-block">
+        <div class="block-title">금리평가와 자본이동</div>
+        <div class="formula-card">
+          <div class="formula-header">INTEREST RATE DIFFERENTIAL</div>
+          <div class="formula-math">$$ \Delta i = i_{US} - i_{KR} = 3.75\% - 3.00\% = 0.75\%p $$</div>
+          <div class="formula-exp">
+            미국과 한국의 금리 격차는 외환시장 캐리트레이드 및 채권 자금 흐름의 핵심 유인입니다.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 5. 미국 국채금리 (TREASURY) ==================== -->
+  <div class="tab-panel" id="treasury">
+    <div class="grid-cards">
+      <div class="metric-card">
+        <div class="metric-label">3개월물 (Short)</div>
+        <div class="metric-value">4.20<span class="metric-unit">%</span></div>
+        <div class="metric-delta flat">단기 유동성 기준</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">2년물 (Policy Sensitive)</div>
+        <div class="metric-value">4.39<span class="metric-unit">%</span></div>
+        <div class="metric-delta up">연준 정책 기대 민감</div>
+      </div>
+      <div class="metric-card highlight">
+        <div class="metric-label">10년물 (Benchmark)</div>
+        <div class="metric-value">4.97<span class="metric-unit">%</span></div>
+        <div class="metric-delta up">글로벌 할인율 지표</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">30년물 (Ultra Long)</div>
+        <div class="metric-value">5.25<span class="metric-unit">%</span></div>
+        <div class="metric-delta up">재정적자 프리미엄</div>
+      </div>
+    </div>
+
+    <div class="content-block">
+      <div class="block-title">미국 국채 만기별 수익률곡선 (Yield Curve)</div>
+      <p class="block-desc">3개월부터 30년물까지의 만기 구조를 보여줍니다. 기간 프리미엄(Term Premium) 확대로 정상적인 우상향 경사를 회복했습니다.</p>
+      <div class="chart-container"><canvas id="chartYieldCurve"></canvas></div>
+    </div>
+
+    <div class="content-block">
+      <div class="block-title">미국 10년물 국채금리 시계열 추이 (최근 12개월)</div>
+      <div class="chart-container"><canvas id="chartTreasuryTrend"></canvas></div>
+    </div>
+
+    <div class="content-block">
+      <div class="block-title">채권 가치평가 및 텀 스프레드 공식</div>
+      <div class="formula-card">
+        <div class="formula-header">BOND PRICING &amp; YTM</div>
+        <div class="formula-math">$$ P = \sum_{t=1}^{n} \frac{C}{(1+y)^t} + \frac{F}{(1+y)^n} $$</div>
+        <div class="formula-exp">
+          $P$=채권가격, $C$=표면이자, $F$=액면가, $y$=만기수익률(YTM). 수익률($y$)이 상승하면 채권 가격($P$)은 하락합니다.
+        </div>
+      </div>
+      <div class="formula-card">
+        <div class="formula-header">10Y - 2Y 텀 스프레드 (기간 프리미엄)</div>
+        <div class="formula-math">$$ \text{Spread}_{10-2} = Y_{10Y} - Y_{2Y} = 4.97\% - 4.39\% = \mathbf{+0.58\%p} $$</div>
+        <div class="formula-exp">
+          스프레드가 양(+)의 정상 곡선으로 복귀하며 경기침체 우려가 완화되고 기간 보상 프리미엄이 정상 반영되고 있습니다.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 6. 외환 (FX) ==================== -->
+  <div class="tab-panel" id="fx">
+    <div class="grid-cards">
+      <div class="metric-card highlight">
+        <div class="metric-top">
+          <span class="metric-label">USD/KRW (달러/원)</span>
+          <span class="live-pulse" id="live-fx-usd"><span class="live-dot"></span>LIVE</span>
+        </div>
+        <div class="metric-value" id="fx-usdkrw">1,341<span class="metric-unit">원</span></div>
+        <div class="metric-delta down">최근 1개월 강세(1,400→1,341)</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-top">
+          <span class="metric-label">JPY/KRW (100엔/원)</span>
+          <span class="live-pulse" id="live-fx-jpy"><span class="live-dot"></span>LIVE</span>
+        </div>
+        <div class="metric-value" id="fx-jpykrw">871<span class="metric-unit">원</span></div>
+        <div class="metric-delta flat">BOJ 금리인상 관망 흐름</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-top">
+          <span class="metric-label">CNY/KRW (위안/원)</span>
+          <span class="live-pulse" id="live-fx-cny"><span class="live-dot"></span>LIVE</span>
+        </div>
+        <div class="metric-value" id="fx-cnykrw">201<span class="metric-unit">원</span></div>
+        <div class="metric-delta flat">중국 경기부양 조치 연동</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-top">
+          <span class="metric-label">EUR/KRW (유로/원)</span>
+          <span class="live-pulse" id="live-fx-eur"><span class="live-dot"></span>LIVE</span>
+        </div>
+        <div class="metric-value" id="fx-eurkrw">1,556<span class="metric-unit">원</span></div>
+        <div class="metric-delta up">ECB 정책금리 인하 반영</div>
+      </div>
+    </div>
+    <p class="block-desc" id="fxUpdatedTimestamp" style="color:var(--text-muted); font-size:12px; margin-top:-6px;"></p>
+
+    <div class="content-block">
+      <div class="block-title">주요 통화 대 원화 환율 추이 (최근 12개월)</div>
+      <p class="block-desc">USD/KRW는 좌측 축(원), JPY(100엔) 및 CNY는 우측 축(원) 기준입니다.</p>
+      <div class="chart-container tall"><canvas id="chartFx"></canvas></div>
+    </div>
+
+    <div class="content-block">
+      <div class="block-title">재정환율(Cross Rate) &amp; 금리평가설 공식</div>
+      <div class="formula-card">
+        <div class="formula-header">CROSS EXCHANGE RATE</div>
+        <div class="formula-math">$$ \text{EUR/KRW} = \text{USD/KRW} \times \text{EUR/USD} $$</div>
+        <div class="formula-exp">
+          원화 직거래 시장이 없는 통화는 기축통화인 미 달러를 매개로 교차환율을 산출합니다.
+        </div>
+      </div>
+      <div class="formula-card">
+        <div class="formula-header">커버드 금리평가설 (CIP)</div>
+        <div class="formula-math">$$ F = S \times \frac{1 + i_d}{1 + i_f} $$</div>
+        <div class="formula-exp">
+          $F$=선물환율, $S$=현물환율, $i_d$=국내금리, $i_f$=해외금리. 양국 금리차는 이론적으로 선물환 프리미엄/디스카운트로 상쇄됩니다.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 7. 금·원자재 (COMMODITY) ==================== -->
+  <div class="tab-panel" id="commodity">
+    <div class="grid-cards">
+      <div class="metric-card highlight">
+        <div class="metric-top">
+          <span class="metric-label"><span class="dot gold"></span>국제 금시세 (원화 환산)</span>
+          <span class="live-pulse" id="live-cm-gold"><span class="live-dot"></span>LIVE</span>
+        </div>
+        <div class="metric-value" id="cm-gold">189,700<span class="metric-unit">원/g</span></div>
+        <div class="metric-delta up" id="cm-gold-usd">$4,400/oz 사상 최고가권</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-top">
+          <span class="metric-label">국제 은시세 (원화 환산)</span>
+          <span class="live-pulse" id="live-cm-silver"><span class="live-dot"></span>LIVE</span>
+        </div>
+        <div class="metric-value" id="cm-silver">2,799<span class="metric-unit">원/g</span></div>
+        <div class="metric-delta up" id="cm-silver-usd">$64.9/oz 산업·투자 수요</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-top">
+          <span class="metric-label"><span class="dot oil"></span>WTI 원유 선물</span>
+          <span class="metric-badge">$/bbl</span>
+        </div>
+        <div class="metric-value">99.99<span class="metric-unit">달러</span></div>
+        <div class="metric-delta up">지정학 리스크 반영</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">국내 순금 1돈 (3.75g) 환산</div>
+        <div class="metric-value" id="cm-gold-don">약 71<span class="metric-unit">만원</span></div>
+        <div class="metric-delta up">소비자 실물 실거래가 기준</div>
+      </div>
+    </div>
+
+    <div class="grid-2col">
+      <div class="content-block">
+        <div class="block-title">금 가격 추이 (원/g 환산)</div>
+        <div class="chart-container"><canvas id="chartGold"></canvas></div>
+      </div>
+      <div class="content-block">
+        <div class="block-title">은 가격 추이 (원/g 환산)</div>
+        <div class="chart-container"><canvas id="chartSilver"></canvas></div>
+      </div>
+    </div>
+
+    <div class="content-block">
+      <div class="block-title">WTI 원유 최근 12개월 추이 ($/bbl)</div>
+      <div class="chart-container short"><canvas id="chartOil"></canvas></div>
+    </div>
+
+    <div class="content-block">
+      <div class="block-title">국제 금시세의 원화 환산 공식</div>
+      <div class="formula-card">
+        <div class="formula-header">GOLD KRW PRICE CONVERSION</div>
+        <div class="formula-math">$$ P_{\text{KRW/g}} = \frac{P_{\text{USD/oz}} \times S_{\text{USD/KRW}}}{31.1035} $$</div>
+        <div class="formula-exp">
+          $1\text{ troy ounce} = 31.1034768\text{ g}$. 국제 달러 고시가에 당일 원/달러 매매기준율을 곱하여 g당 원화 환산 가격을 도출합니다.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 8. 한국 통화량 (MONEY) ==================== -->
+  <div class="tab-panel" id="money">
+    <div class="grid-cards">
+      <div class="metric-card">
+        <div class="metric-label">M1 (협의통화, 평잔)</div>
+        <div class="metric-value">1,409<span class="metric-unit">조원</span></div>
+        <div class="metric-delta up">전년비 +8.5% 증가</div>
+        <div class="metric-sub">현금 및 요구불예금</div>
+      </div>
+      <div class="metric-card highlight">
+        <div class="metric-label">M2 (광의통화, 평잔)</div>
+        <div class="metric-value">4,210<span class="metric-unit">조원</span></div>
+        <div class="metric-delta up">전년비 +6.0% 증가</div>
+        <div class="metric-sub">정기예적금, 시장형 금융상품 포함</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Lf (금융기관유동성)</div>
+        <div class="metric-value">6,203<span class="metric-unit">조원</span></div>
+        <div class="metric-delta up">금융권 총 유동성 지표</div>
+        <div class="metric-sub">한국은행 집계 기준</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">단기유동성 비율 (M1 / M2)</div>
+        <div class="metric-value">33.5<span class="metric-unit">%</span></div>
+        <div class="metric-delta up">투자 대기성 단기자금 비중</div>
+        <div class="metric-sub">자산시장 유입 대기 자금</div>
+      </div>
+    </div>
+
+    <div class="grid-2col">
+      <div class="content-block">
+        <div class="block-title">M1 통화량 잔액 추이 (조원)</div>
+        <div class="chart-container"><canvas id="chartM1Level"></canvas></div>
+      </div>
+      <div class="content-block">
+        <div class="block-title">단기유동자금비율 (M1/M2, %) 추이</div>
+        <div class="chart-container"><canvas id="chartM1M2Ratio"></canvas></div>
+      </div>
+    </div>
+
+    <div class="content-block">
+      <div class="block-title">M1 · M2 전년동월대비 증가율(%) 추이</div>
+      <div class="chart-container short"><canvas id="chartMoney"></canvas></div>
+    </div>
+
+    <div class="content-block">
+      <div class="block-title">통화승수 및 화폐유통속도 공식</div>
+      <div class="formula-card">
+        <div class="formula-header">MONEY MULTIPLIER &amp; VELOCITY</div>
+        <div class="formula-math">$$ m = \frac{M2}{B}, \qquad V = \frac{GDP}{M2} $$</div>
+        <div class="formula-exp">
+          $B$=본원통화, $m$=통화승수, $V$=화폐유통속도. 중앙은행이 공급한 본원통화가 신용창출 과정을 거쳐 시중에 통화량을 공급하는 승수 효과를 나타냅니다.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 9. 종합지수 포털 링크 (LINKS) ==================== -->
+  <div class="tab-panel" id="links">
+    <div class="content-block">
+      <div class="block-title">🌐 국내외 종합주가지수 공식 포털 &amp; 거래소 바로가기</div>
+      <p class="block-desc">
+        실시간 호가, 종목별 시세, 재무제표 및 지수 산출 내역을 확인할 수 있는 공식 금융 포털 직결 링크 모음입니다.
+      </p>
+
+      <h3 style="font-size:14px; margin:16px 0 8px; color:var(--text-secondary);">🇺🇸 미국 증시 대표 지수</h3>
+      <div class="links-grid">
+        <a href="https://www.google.com/finance/quote/.INX:INDEXSP" target="_blank" class="link-card">
+          <div class="link-info">
+            <span class="link-title">S&amp;P 500 (Google Finance)</span>
+            <span class="link-subtitle">미국 대형주 500개 종합지수 (.INX)</span>
+          </div>
+          <span class="link-arrow">↗</span>
+        </a>
+        <a href="https://finance.yahoo.com/quote/%5EGSPC" target="_blank" class="link-card">
+          <div class="link-info">
+            <span class="link-title">S&amp;P 500 (Yahoo Finance)</span>
+            <span class="link-subtitle">실시간 차트, 구성종목, 옵션 체인 (^GSPC)</span>
+          </div>
+          <span class="link-arrow">↗</span>
+        </a>
+        <a href="https://www.google.com/finance/quote/.IXIC:INDEXNASDAQ" target="_blank" class="link-card">
+          <div class="link-info">
+            <span class="link-title">NASDAQ Composite (Google)</span>
+            <span class="link-subtitle">나스닥 종합지수 (.IXIC)</span>
+          </div>
+          <span class="link-arrow">↗</span>
+        </a>
+        <a href="https://finance.yahoo.com/quote/%5EIXIC" target="_blank" class="link-card">
+          <div class="link-info">
+            <span class="link-title">NASDAQ Composite (Yahoo)</span>
+            <span class="link-subtitle">빅테크 및 기술주 종합 (^IXIC)</span>
+          </div>
+          <span class="link-arrow">↗</span>
+        </a>
+        <a href="https://www.google.com/finance/quote/.DJI:INDEXDJX" target="_blank" class="link-card">
+          <div class="link-info">
+            <span class="link-title">Dow Jones Industrial Average</span>
+            <span class="link-subtitle">다우존스 30 종목 산업평균 (.DJI)</span>
+          </div>
+          <span class="link-arrow">↗</span>
+        </a>
+        <a href="https://www.investing.com/indices/us-spx-500" target="_blank" class="link-card">
+          <div class="link-info">
+            <span class="link-title">Investing.com S&amp;P 500</span>
+            <span class="link-subtitle">기술적 분석, 피봇포인트, 실시간 선물</span>
+          </div>
+          <span class="link-arrow">↗</span>
+        </a>
+      </div>
+
+      <h3 style="font-size:14px; margin:24px 0 8px; color:var(--text-secondary);">🇰🇷 한국 증시 대표 지수</h3>
+      <div class="links-grid">
+        <a href="https://finance.naver.com/sise/sise_index.naver?code=KOSPI" target="_blank" class="link-card">
+          <div class="link-info">
+            <span class="link-title">네이버 증권 - 코스피 (KOSPI)</span>
+            <span class="link-subtitle">투자자별 매매동향(외인/기관/개인), 시총상위</span>
+          </div>
+          <span class="link-arrow">↗</span>
+        </a>
+        <a href="https://finance.naver.com/sise/sise_index.naver?code=KOSDAQ" target="_blank" class="link-card">
+          <div class="link-info">
+            <span class="link-title">네이버 증권 - 코스닥 (KOSDAQ)</span>
+            <span class="link-subtitle">업종별 시세, 프로그램 매매현황</span>
+          </div>
+          <span class="link-arrow">↗</span>
+        </a>
+        <a href="http://data.krx.co.kr" target="_blank" class="link-card">
+          <div class="link-info">
+            <span class="link-title">KRX 한국거래소 정보데이터시스템</span>
+            <span class="link-subtitle">공식 지수 산출 명세, PER/PBR/배당수익률</span>
+          </div>
+          <span class="link-arrow">↗</span>
+        </a>
+        <a href="https://www.google.com/finance/quote/KOSPI:KRX" target="_blank" class="link-card">
+          <div class="link-info">
+            <span class="link-title">Google Finance - KOSPI</span>
+            <span class="link-subtitle">글로벌 관점의 원화 지수 트래킹</span>
+          </div>
+          <span class="link-arrow">↗</span>
+        </a>
+      </div>
+
+      <h3 style="font-size:14px; margin:24px 0 8px; color:var(--text-secondary);">🌏 해외 주요국 종합지수</h3>
+      <div class="links-grid">
+        <a href="https://finance.yahoo.com/quote/%5EN225" target="_blank" class="link-card">
+          <div class="link-info">
+            <span class="link-title">니케이 225 (일본)</span>
+            <span class="link-subtitle">Nikkei 225 Stock Average (^N225)</span>
+          </div>
+          <span class="link-arrow">↗</span>
+        </a>
+        <a href="https://finance.yahoo.com/quote/%5ESTOXX50E" target="_blank" class="link-card">
+          <div class="link-info">
+            <span class="link-title">유로스톡스 50 (유럽)</span>
+            <span class="link-subtitle">EURO STOXX 50 Index (^STOXX50E)</span>
+          </div>
+          <span class="link-arrow">↗</span>
+        </a>
+        <a href="https://finance.yahoo.com/quote/000001.SS" target="_blank" class="link-card">
+          <div class="link-info">
+            <span class="link-title">상하이 종합 (중국)</span>
+            <span class="link-subtitle">SSE Composite Index (000001.SS)</span>
+          </div>
+          <span class="link-arrow">↗</span>
+        </a>
+        <a href="https://finance.yahoo.com/quote/%5EGDAXI" target="_blank" class="link-card">
+          <div class="link-info">
+            <span class="link-title">독일 DAX 40 (독일)</span>
+            <span class="link-subtitle">DAX Performance Index (^GDAXI)</span>
+          </div>
+          <span class="link-arrow">↗</span>
+        </a>
+        <a href="https://finance.yahoo.com/quote/%5ETWII" target="_blank" class="link-card">
+          <div class="link-info">
+            <span class="link-title">대만 가권지수 (대만)</span>
+            <span class="link-subtitle">Taiwan Capitalization Weighted (^TWII)</span>
+          </div>
+          <span class="link-arrow">↗</span>
+        </a>
+        <a href="https://finance.yahoo.com/quote/%5EFTSE" target="_blank" class="link-card">
+          <div class="link-info">
+            <span class="link-title">영국 FTSE 100</span>
+            <span class="link-subtitle">FTSE 100 Index (^FTSE)</span>
+          </div>
+          <span class="link-arrow">↗</span>
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<!-- Footer -->
+<footer>
+  <div>
+    ※ <b>글로벌 금융지표 &amp; 주가지수 대시보드 v3</b>는 주가지수(S&amp;P500, 나스닥, 다우, 코스피, 코스닥, 해외지수) 및 주요 거시지표의 시계열 추세 분석을 위해 제작되었습니다.<br>
+    ※ <b>[실시간 데이터 갱신]</b> 실행 시, 무료 공개 API(frankfurter.app, goldprice.org)를 통해 환율(USD/JPY/CNY/EUR) 및 금·은 시세가 즉시 라이브로 업데이트됩니다. 기준금리, 채권수익률, 통화량 및 지수 과거 시계열은 공식 발표치 및 보간 데이터를 기준으로 제공됩니다.<br>
+    ※ 본 대시보드는 정보 제공 목적의 시스템이며 투자 권유나 거래 체결을 목적으로 하지 않습니다. 실제 투자 시에는 한국거래소(KRX), 연준(FRED), 한국은행(ECOS) 등 공식 기관의 고시 데이터를 필히 확인하시기 바랍니다.
+  </div>
+  <div style="margin-top:12px; color:var(--text-muted);">
+    Copyright © 2026 Global Macro Financial Dashboard. Built with Vanilla CSS, Chart.js &amp; KaTeX.
+  </div>
+</footer>
+
+<!-- JavaScript Logic -->
+<script>
+// ==================== 1. 테마 토글 ====================
+function toggleTheme() {
+  const current = document.body.getAttribute('data-theme');
+  const next = current === 'light' ? 'dark' : 'light';
+  if(next === 'light') {
+    document.body.setAttribute('data-theme', 'light');
+    document.getElementById('themeToggle').textContent = '☀️';
+  } else {
+    document.body.removeAttribute('data-theme');
+    document.getElementById('themeToggle').textContent = '🌙';
+  }
+  updateChartColors();
+}
+
+// ==================== 2. 탭 전환 ====================
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    const panel = document.getElementById(btn.dataset.tab);
+    if(panel) panel.classList.add('active');
+    window.dispatchEvent(new Event('resize'));
+  });
+});
+
+function quickSelectIndex(indexKey) {
+  // Switch to indices tab
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  const indicesTabBtn = document.querySelector('[data-tab="indices"]');
+  if(indicesTabBtn) indicesTabBtn.classList.add('active');
+  const indicesPanel = document.getElementById('indices');
+  if(indicesPanel) indicesPanel.classList.add('active');
+
+  const select = document.getElementById('indexSelect');
+  if(select) {
+    select.value = indexKey;
+    onIndexSelectChange();
+  }
+  window.scrollTo({ top: 120, behavior: 'smooth' });
+}
+
+// ==================== 3. KaTeX 수식 렌더링 ====================
+document.addEventListener('DOMContentLoaded', function() {
+  if(window.renderMathInElement) {
+    renderMathInElement(document.body, {
+      delimiters: [
+        {left: "$$", right: "$$", display: true},
+        {left: "$", right: "$", display: false}
+      ]
+    });
+  }
+});
+
+// ==================== 4. 시계열 데이터셋 (주가지수) ====================
+// 각 지수별: daily (단기 30일), monthly (중기 24개월), yearly (장기 10년)
+
+const datesDaily = [
+  '08.01','08.04','08.05','08.06','08.07','08.08','08.11','08.12','08.13','08.14',
+  '08.18','08.19','08.20','08.21','08.22','08.25','08.26','08.27','08.28','08.29',
+  '09.01','09.02','09.03','09.04','09.05','09.08','09.09','09.10','09.11','09.12'
+];
+
+const datesMonthly = [
+  '24.10','24.11','24.12','25.01','25.02','25.03','25.04','25.05','25.06','25.07','25.08','25.09',
+  '25.10','25.11','25.12','26.01','26.02','26.03','26.04','26.05','26.06','26.07','26.08','26.09'
+];
+
+const datesYearly = ['2017','2018','2019','2020','2021','2022','2023','2024','2025','2026(E)'];
+
+const indicesData = {
+  sp500: {
+    name: 'S&P 500',
+    code: '^GSPC',
+    color: '#388bfd',
+    daily: [5480,5510,5460,5495,5530,5550,5520,5545,5580,5605,5590,5620,5610,5635,5650,5640,5665,5680,5670,5690,5685,5705,5715,5695,5710,5718,5700,5725,5720.5,5720.5],
+    monthly: [4288,4400,4550,4700,4850,5000,5050,5200,5350,5450,5500,5550,5520,5580,5620,5600,5640,5680,5650,5700,5690,5710,5715,5720.5],
+    yearly: [2673,2506,3230,3756,4766,3839,4769,5350,5550,5720.5],
+    googleLink: 'https://www.google.com/finance/quote/.INX:INDEXSP',
+    yahooLink: 'https://finance.yahoo.com/quote/%5EGSPC',
+    naverLink: 'https://finance.naver.com/world/sise.naver?symbol=SPI@SPX'
+  },
+  nasdaq: {
+    name: '나스닥 종합 (NASDAQ)',
+    code: '^IXIC',
+    color: '#bc8cff',
+    daily: [17350,17420,17280,17450,17580,17650,17500,17620,17750,17890,17810,17930,17880,17990,18050,17980,18080,18120,18060,18140,18090,18150,18190,18110,18160,18190,18110,18160,18125.8,18125.8],
+    monthly: [13100,13600,14300,14900,15600,16200,16300,16800,17400,17700,17600,17850,17700,17900,18100,17950,18050,18200,18050,18250,18150,18200,18180,18125.8],
+    yearly: [6903,6635,8972,12888,15644,10466,15011,17400,17800,18125.8],
+    googleLink: 'https://www.google.com/finance/quote/.IXIC:INDEXNASDAQ',
+    yahooLink: 'https://finance.yahoo.com/quote/%5EIXIC',
+    naverLink: 'https://finance.naver.com/world/sise.naver?symbol=NAS@IXIC'
+  },
+  dow: {
+    name: '다우존스 30 (DJIA)',
+    code: '^DJI',
+    color: '#f85149',
+    daily: [40300,40450,40250,40500,40680,40800,40650,40790,40920,41050,40980,41120,41080,41200,41300,41220,41350,41420,41380,41450,41400,41480,41520,41420,41470,41510,41440,41490,41480.2,41480.2],
+    monthly: [33800,34500,35500,36800,37800,38800,38900,39500,39900,40300,40500,40700,40600,40900,41100,41000,41200,41350,41250,41450,41400,41460,41470,41480.2],
+    yearly: [24719,23327,28538,30606,36338,33147,37689,39800,40800,41480.2],
+    googleLink: 'https://www.google.com/finance/quote/.DJI:INDEXDJX',
+    yahooLink: 'https://finance.yahoo.com/quote/%5EDJI',
+    naverLink: 'https://finance.naver.com/world/sise.naver?symbol=DJI@DJI'
+  },
+  kospi: {
+    name: '코스피 (KOSPI)',
+    code: '069500.KS',
+    color: '#39c5cf',
+    daily: [2610,2625,2590,2630,2650,2665,2645,2660,2675,2685,2670,2690,2680,2695,2705,2690,2710,2715,2700,2710,2695,2705,2710,2685,2690,2695,2675,2685,2682.4,2682.4],
+    monthly: [2400,2450,2520,2580,2640,2690,2670,2720,2750,2780,2720,2700,2680,2710,2730,2690,2710,2740,2710,2730,2700,2715,2695,2682.4],
+    yearly: [2467,2041,2197,2873,2977,2236,2655,2750,2700,2682.4],
+    googleLink: 'https://www.google.com/finance/quote/KOSPI:KRX',
+    yahooLink: 'https://finance.yahoo.com/quote/%5EKS11',
+    naverLink: 'https://finance.naver.com/sise/sise_index.naver?code=KOSPI'
+  },
+  kosdaq: {
+    name: '코스닥 (KOSDAQ)',
+    code: 'KOSDAQ',
+    color: '#e36209',
+    daily: [795,800,785,798,805,810,802,808,812,815,805,810,802,808,812,800,805,802,795,798,790,792,795,782,785,788,775,780,778.6,778.6],
+    monthly: [780,805,830,850,865,880,860,885,890,880,850,830,815,825,835,810,820,830,810,815,795,800,785,778.6],
+    yearly: [798,675,669,968,1037,679,866,880,830,778.6],
+    googleLink: 'https://www.google.com/finance/quote/KOSDAQ:KRX',
+    yahooLink: 'https://finance.yahoo.com/quote/%5EKQ11',
+    naverLink: 'https://finance.naver.com/sise/sise_index.naver?code=KOSDAQ'
+  },
+  nikkei: {
+    name: '니케이 225 (Nikkei)',
+    code: '^N225',
+    color: '#d29922',
+    daily: [36500,36750,36200,36800,37100,37350,37050,37280,37500,37720,37550,37800,37700,37950,38100,37900,38150,38250,38050,38200,38000,38150,38200,37850,37950,38050,37750,37900,37840,37840],
+    monthly: [31000,32500,34000,35800,37500,39500,39000,40200,41000,39800,38500,38800,38200,38700,39100,38500,38800,39200,38700,38900,38200,38500,38000,37840],
+    yearly: [22764,20014,23656,27444,28791,26094,33464,39500,38800,37840],
+    googleLink: 'https://www.google.com/finance/quote/NI225:INDEXNIKKEI',
+    yahooLink: 'https://finance.yahoo.com/quote/%5EN225',
+    naverLink: 'https://finance.naver.com/world/sise.naver?symbol=NII@NI225'
+  },
+  eurostoxx: {
+    name: '유로스톡스 50 (SX5E)',
+    code: '^STOXX50E',
+    color: '#a371f7',
+    daily: [4860,4885,4840,4890,4915,4930,4910,4925,4945,4960,4950,4970,4965,4980,4995,4980,4995,5005,4990,5000,4985,4995,5000,4965,4975,4980,4950,4965,4955.3,4955.3],
+    monthly: [4150,4280,4420,4550,4680,4820,4850,4950,5020,4980,4920,4950,4920,4960,4990,4950,4970,5010,4970,4990,4940,4960,4950,4955.3],
+    yearly: [3503,3001,3745,3552,4298,3793,4521,4950,4980,4955.3],
+    googleLink: 'https://www.google.com/finance/quote/SX5E:INDEXSTOXX',
+    yahooLink: 'https://finance.yahoo.com/quote/%5ESTOXX50E',
+    naverLink: 'https://finance.naver.com/world/sise.naver?symbol=STX@SX5E'
+  },
+  shanghai: {
+    name: '상하이종합 (SSE)',
+    code: '000001.SS',
+    color: '#da3633',
+    daily: [2920,2935,2910,2940,2950,2960,2945,2955,2965,2970,2955,2968,2960,2972,2980,2965,2975,2980,2965,2970,2950,2958,2960,2930,2935,2940,2915,2925,2880.5,2880.5],
+    monthly: [3020,3050,3080,2980,3030,3060,3040,3080,3090,3020,2960,2980,2950,2970,2990,2940,2960,2980,2940,2960,2910,2930,2900,2880.5],
+    yearly: [3307,2493,3050,3473,3639,3089,2974,3050,2980,2880.5],
+    googleLink: 'https://www.google.com/finance/quote/000001:SHA',
+    yahooLink: 'https://finance.yahoo.com/quote/000001.SS',
+    naverLink: 'https://finance.naver.com/world/sise.naver?symbol=SHS@000001'
+  },
+  dax: {
+    name: '독일 DAX 40',
+    code: '^GDAXI',
+    color: '#56d364',
+    daily: [18300,18420,18250,18450,18580,18650,18520,18640,18750,18850,18780,18920,18880,19010,19080,18990,19090,19140,19080,19150,19080,19160,19190,19020,19080,19120,18980,19050,19025,19025],
+    monthly: [15200,15800,16500,16900,17400,17900,18100,18500,18700,18600,18450,18650,18550,18750,18900,18750,18850,19050,18950,19100,18900,19050,19000,19025],
+    yearly: [12917,10558,13249,13718,15884,13923,16751,18500,18800,19025],
+    googleLink: 'https://www.google.com/finance/quote/DAX:INDEXDB',
+    yahooLink: 'https://finance.yahoo.com/quote/%5EGDAXI',
+    naverLink: 'https://finance.naver.com/world/sise.naver?symbol=XTR@GDAXI'
+  },
+  taiex: {
+    name: '대만 가권지수 (TAIEX)',
+    code: '^TWII',
+    color: '#79c0ff',
+    daily: [21600,21780,21450,21800,22050,22200,21980,22150,22350,22500,22380,22580,22500,22700,22820,22680,22850,22950,22850,22980,22850,22980,23050,22780,22880,22950,22720,22850,22820,22820],
+    monthly: [16800,17500,18200,18800,19600,20500,20800,21600,22500,22200,21800,22300,22100,22500,22800,22400,22600,22900,22700,22950,22600,22850,22750,22820],
+    yearly: [10642,9727,11997,14732,18218,14137,17930,22000,22600,22820],
+    googleLink: 'https://www.google.com/finance/quote/TAIEX:TPE',
+    yahooLink: 'https://finance.yahoo.com/quote/%5ETWII',
+    naverLink: 'https://finance.naver.com/world/sise.naver?symbol=TWS@TI01'
+  }
+};
+
+// State variables for Stock Index interactive viewer
+let currentIndexKey = 'sp500';
+let currentGranularity = 'daily'; // 'daily' | 'monthly' | 'yearly'
+let currentHorizon = 'short';     // 'short' | 'mid' | 'long'
+let chartStockIndexInstance = null;
+
+function getChartColors() {
+  const isLight = document.body.getAttribute('data-theme') === 'light';
+  return {
+    text: isLight ? '#57606a' : '#8b949e',
+    grid: isLight ? '#eaeef2' : '#21262d',
+    tooltipBg: isLight ? '#ffffff' : '#1c2128',
+    tooltipText: isLight ? '#1f2328' : '#f0f6fc',
+    tooltipBorder: isLight ? '#d0d7de' : '#30363d'
+  };
+}
+
+function updateChartColors() {
+  const c = getChartColors();
+  Chart.defaults.color = c.text;
+  [chartStockIndexInstance, chartComparisonInstance, chartRatesInstance, chartYieldCurveInstance, chartTreasuryTrendInstance, chartFxInstance, chartGoldInstance, chartSilverInstance, chartOilInstance, chartM1LevelInstance, chartM1M2RatioInstance, chartMoneyInstance].forEach(inst => {
+    if(inst) {
+      if(inst.options.scales.x) inst.options.scales.x.grid.color = c.grid;
+      if(inst.options.scales.y) inst.options.scales.y.grid.color = c.grid;
+      inst.update();
+    }
+  });
+}
+
+// Format numbers
+function fmt(num, digits=2) {
+  if(num === null || num === undefined || isNaN(num)) return '-';
+  return Number(num).toLocaleString('ko-KR', {
+    maximumFractionDigits: digits,
+    minimumFractionDigits: 0
+  });
+}
+
+// Resolve dataset based on Granularity and Horizon
+function getIndexActiveData(indexKey, gran, horiz) {
+  const meta = indicesData[indexKey];
+  let labels = [];
+  let data = [];
+
+  if(gran === 'daily') {
+    if(horiz === 'short') { // 30 trading days
+      labels = datesDaily;
+      data = meta.daily;
+    } else if(horiz === 'mid') { // sample weekly / monthly
+      labels = datesMonthly;
+      data = meta.monthly;
+    } else { // multi-year
+      labels = datesYearly;
+      data = meta.yearly;
+    }
+  } else if(gran === 'monthly') {
+    if(horiz === 'short') { // recent 6 months
+      labels = datesMonthly.slice(-6);
+      data = meta.monthly.slice(-6);
+    } else if(horiz === 'mid') { // recent 12 months
+      labels = datesMonthly.slice(-12);
+      data = meta.monthly.slice(-12);
+    } else { // 24 months
+      labels = datesMonthly;
+      data = meta.monthly;
+    }
+  } else if(gran === 'yearly') {
+    if(horiz === 'short') { // recent 3 years
+      labels = datesYearly.slice(-3);
+      data = meta.yearly.slice(-3);
+    } else if(horiz === 'mid') { // recent 5 years
+      labels = datesYearly.slice(-5);
+      data = meta.yearly.slice(-5);
+    } else { // 10 years
+      labels = datesYearly;
+      data = meta.yearly;
+    }
+  }
+
+  return { labels, data, meta };
+}
+
+function updateStockIndexChart() {
+  const { labels, data, meta } = getIndexActiveData(currentIndexKey, currentGranularity, currentHorizon);
+  const colors = getChartColors();
+
+  // Calculate statistics
+  const currentVal = data[data.length - 1];
+  const startVal = data[0];
+  const delta = currentVal - startVal;
+  const returnPct = ((delta / startVal) * 100).toFixed(2);
+  const highVal = Math.max(...data);
+  const lowVal = Math.min(...data);
+
+  // Approximate CAGR for multi-year or Volatility
+  let cagrText = '';
+  if(currentGranularity === 'yearly' || currentHorizon === 'long') {
+    const years = Math.max(1, labels.length - 1);
+    const cagr = ((Math.pow(currentVal / startVal, 1 / years) - 1) * 100).toFixed(2);
+    cagrText = `연복리 ${cagr > 0 ? '+' : ''}${cagr}%`;
+  } else {
+    // Max Drawdown approximation
+    let peak = -Infinity;
+    let maxDd = 0;
+    for(let v of data) {
+      if(v > peak) peak = v;
+      const dd = (peak - v) / peak;
+      if(dd > maxDd) maxDd = dd;
+    }
+    cagrText = `기간 MDD -${(maxDd*100).toFixed(1)}%`;
+  }
+
+  // Update DOM stats
+  document.getElementById('stat-current').innerHTML = `${fmt(currentVal)} <span style="font-size:11px; font-weight:400; color:var(--text-secondary);">pt</span>`;
+  const returnEl = document.getElementById('stat-return');
+  returnEl.innerHTML = `${delta >= 0 ? '▲ +' : '▼ '}${fmt(delta)} (${delta >= 0 ? '+' : ''}${returnPct}%)`;
+  returnEl.className = 'stat-val ' + (delta >= 0 ? 'up' : 'down');
+
+  document.getElementById('stat-high').textContent = `${fmt(highVal)} pt`;
+  document.getElementById('stat-low').textContent = `${fmt(lowVal)} pt`;
+  document.getElementById('stat-cagr').textContent = cagrText;
+
+  // Update direct links
+  const gLink = document.getElementById('dynamicIndexLinkGoogle');
+  const yLink = document.getElementById('dynamicIndexLinkYahoo');
+  const nLink = document.getElementById('dynamicIndexLinkNaver');
+  if(gLink) gLink.href = meta.googleLink;
+  if(yLink) yLink.href = meta.yahooLink;
+  if(nLink) nLink.href = meta.naverLink;
+
+  if(chartStockIndexInstance) {
+    chartStockIndexInstance.destroy();
+  }
+
+  const ctx = document.getElementById('chartStockIndex').getContext('2d');
+  
+  // Gradient fill
+  const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+  gradient.addColorStop(0, meta.color + '44');
+  gradient.addColorStop(1, meta.color + '00');
+
+  chartStockIndexInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: `${meta.name} (${currentGranularity.toUpperCase()} / ${currentHorizon.toUpperCase()})`,
+        data: data,
+        borderColor: meta.color,
+        backgroundColor: gradient,
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.25,
+        pointRadius: labels.length > 20 ? 2 : 4,
+        pointHoverRadius: 6,
+        pointBackgroundColor: meta.color
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, labels: { color: colors.text, boxWidth: 12, font: { size: 12 } } },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: function(ctx) {
+              return ` ${ctx.dataset.label}: ${fmt(ctx.parsed.y)} pt`;
+            }
+          }
+        }
+      },
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: { grid: { color: colors.grid }, ticks: { color: colors.text, maxRotation: 45, autoSkip: true, maxTicksLimit: 14 } },
+        y: {
+          grid: { color: colors.grid },
+          ticks: {
+            color: colors.text,
+            callback: v => fmt(v, 0)
+          }
+        }
+      }
+    }
+  });
+}
+
+function onIndexSelectChange() {
+  const sel = document.getElementById('indexSelect');
+  if(sel) {
+    currentIndexKey = sel.value;
+    updateStockIndexChart();
+  }
+}
+
+function setTimeGranularity(gran) {
+  currentGranularity = gran;
+  const group = document.getElementById('granularityGroup');
+  group.querySelectorAll('.pill-btn').forEach(btn => btn.classList.remove('active'));
+  const target = Array.from(group.querySelectorAll('.pill-btn')).find(b => b.textContent.toLowerCase().includes(gran));
+  if(target) target.classList.add('active');
+  updateStockIndexChart();
+}
+
+function setTimeHorizon(horiz) {
+  currentHorizon = horiz;
+  const group = document.getElementById('horizonGroup');
+  group.querySelectorAll('.pill-btn').forEach(btn => btn.classList.remove('active'));
+  const target = Array.from(group.querySelectorAll('.pill-btn')).find(b => b.textContent.toLowerCase().includes(horiz));
+  if(target) target.classList.add('active');
+  updateStockIndexChart();
+}
+
+// ==================== 5. 정규화 지수 비교 차트 (Base 100) ====================
+let chartComparisonInstance = null;
+let compHorizon = '1y';
+
+function setCompHorizon(h) {
+  compHorizon = h;
+  const group = document.getElementById('compHorizonGroup');
+  group.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+  const target = Array.from(group.querySelectorAll('.pill-btn')).find(b => b.textContent.includes(h));
+  if(target) target.classList.add('active');
+  renderComparisonChart();
+}
+
+function normalizeBase100(arr) {
+  const base = arr[0] || 1;
+  return arr.map(v => +( (v / base) * 100 ).toFixed(2));
+}
+
+function renderComparisonChart() {
+  let labels = [];
+  let compIndices = ['sp500', 'nasdaq', 'dow', 'kospi', 'nikkei', 'eurostoxx'];
+
+  if(compHorizon === '1m') {
+    labels = datesDaily;
+  } else if(compHorizon === '1y') {
+    labels = datesMonthly.slice(-12);
+  } else if(compHorizon === '5y') {
+    labels = datesYearly.slice(-5);
+  } else if(compHorizon === '10y') {
+    labels = datesYearly;
+  }
+
+  const datasets = compIndices.map(key => {
+    const meta = indicesData[key];
+    let rawData = [];
+    if(compHorizon === '1m') rawData = meta.daily;
+    else if(compHorizon === '1y') rawData = meta.monthly.slice(-12);
+    else if(compHorizon === '5y') rawData = meta.yearly.slice(-5);
+    else rawData = meta.yearly;
+
+    return {
+      label: meta.name,
+      data: normalizeBase100(rawData),
+      borderColor: meta.color,
+      backgroundColor: 'transparent',
+      borderWidth: key === 'sp500' || key === 'kospi' ? 2.5 : 1.8,
+      tension: 0.25,
+      pointRadius: labels.length > 20 ? 1.5 : 3
+    };
+  });
+
+  const colors = getChartColors();
+  if(chartComparisonInstance) chartComparisonInstance.destroy();
+
+  const ctx = document.getElementById('chartComparison').getContext('2d');
+  chartComparisonInstance = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { color: colors.text, boxWidth: 12, font: { size: 12 } } },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: function(ctx) {
+              const val = ctx.parsed.y;
+              const ret = (val - 100).toFixed(2);
+              return ` ${ctx.dataset.label}: ${val} (${ret >= 0 ? '+' : ''}${ret}%)`;
+            }
+          }
+        }
+      },
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: { grid: { color: colors.grid }, ticks: { color: colors.text } },
+        y: {
+          grid: { color: colors.grid },
+          ticks: { color: colors.text, callback: v => `${v}` },
+          title: { display: true, text: '기준시점 = 100', color: colors.text }
+        }
+      }
+    }
+  });
+}
+
+// ==================== 6. 기준금리 및 거시 차트 초기화 ====================
+const monthsMacro = ['25.10','25.11','25.12','26.01','26.02','26.03','26.04','26.05','26.06','26.07','26.08','26.09'];
+const baseOpt = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 11 } } }, tooltip: { mode: 'index', intersect: false } },
+  interaction: { mode: 'index', intersect: false },
+  scales: { x: { grid: { display: false } }, y: { grid: { color: '#21262d' } } }
+};
+
+let chartRatesInstance = null;
+let chartYieldCurveInstance = null;
+let chartTreasuryTrendInstance = null;
+let chartFxInstance = null;
+let chartGoldInstance = null;
+let chartSilverInstance = null;
+let chartOilInstance = null;
+let chartM1LevelInstance = null;
+let chartM1M2RatioInstance = null;
+let chartMoneyInstance = null;
+
+function setRatesView(range) {
+  const group = document.getElementById('ratesHorizonGroup');
+  group.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+  const target = Array.from(group.querySelectorAll('.pill-btn')).find(b => b.textContent.includes(range));
+  if(target) target.classList.add('active');
+
+  let lbls = monthsMacro;
+  let kr = [2.50,2.50,2.50,2.50,2.50,2.50,2.50,2.50,2.50,2.75,3.00,3.00];
+  let us = [3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75];
+
+  if(range === '1y') {
+    lbls = monthsMacro.slice(-12);
+    kr = kr.slice(-12);
+    us = us.slice(-12);
+  } else if(range === '5y') {
+    lbls = ['2022','2023','2024','2025','2026'];
+    kr = [3.25, 3.50, 3.25, 2.50, 3.00];
+    us = [4.50, 5.50, 4.75, 3.75, 3.75];
+  }
+
+  if(chartRatesInstance) {
+    chartRatesInstance.data.labels = lbls;
+    chartRatesInstance.data.datasets[0].data = kr;
+    chartRatesInstance.data.datasets[1].data = us;
+    chartRatesInstance.update();
+  }
+}
+
+function initMacroCharts() {
+  const colors = getChartColors();
+  Chart.defaults.font.family = "'Inter', 'Noto Sans KR', sans-serif";
+  Chart.defaults.color = colors.text;
+
+  // 1) Rates
+  chartRatesInstance = new Chart(document.getElementById('chartRates'), {
+    type: 'line',
+    data: {
+      labels: monthsMacro,
+      datasets: [
+        { label: '한국 기준금리 (%)', data: [2.50,2.50,2.50,2.50,2.50,2.50,2.50,2.50,2.50,2.75,3.00,3.00], borderColor: '#388bfd', backgroundColor: '#388bfd22', tension: .3, pointRadius: 3 },
+        { label: '미국 정책금리 상단 (%)', data: [3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75], borderColor: '#f85149', backgroundColor: '#f8514922', tension: .3, pointRadius: 3, borderDash: [5,3] }
+      ]
+    },
+    options: baseOpt
+  });
+
+  // 2) Yield Curve
+  chartYieldCurveInstance = new Chart(document.getElementById('chartYieldCurve'), {
+    type: 'line',
+    data: {
+      labels: ['3개월','1년','2년','3년','5년','7년','10년','20년','30년'],
+      datasets: [{
+        label: '미국 국채 만기별 수익률 (%)',
+        data: [4.20, 4.30, 4.39, 4.44, 4.57, 4.68, 4.97, 5.26, 5.25],
+        borderColor: '#f85149', backgroundColor: '#f851491a', fill: true, tension: .35, pointRadius: 4, pointBackgroundColor: '#f85149'
+      }]
+    },
+    options: baseOpt
+  });
+
+  // 3) 10Y Trend
+  chartTreasuryTrendInstance = new Chart(document.getElementById('chartTreasuryTrend'), {
+    type: 'line',
+    data: {
+      labels: monthsMacro,
+      datasets: [{ label: '美 10년 국채금리 (%)', data: [4.05,4.10,4.18,4.22,4.15,4.28,4.35,4.42,4.55,4.70,4.85,4.97], borderColor: '#388bfd', backgroundColor: '#388bfd22', tension: .3, pointRadius: 2, fill: true }]
+    },
+    options: baseOpt
+  });
+
+  // 4) FX
+  chartFxInstance = new Chart(document.getElementById('chartFx'), {
+    type: 'line',
+    data: {
+      labels: monthsMacro,
+      datasets: [
+        { label: 'USD/KRW', data: [1390,1400,1410,1420,1405,1395,1410,1430,1420,1400,1345,1341], borderColor: '#79c0ff', backgroundColor: '#79c0ff22', yAxisID: 'y', tension: .3, pointRadius: 2 },
+        { label: 'JPY/KRW (100엔)', data: [905,910,900,895,890,885,880,878,875,873,872,871], borderColor: '#f85149', backgroundColor: '#f8514922', yAxisID: 'y1', tension: .3, pointRadius: 2 },
+        { label: 'CNY/KRW', data: [196,197,198,199,200,199,201,202,203,202,201,201], borderColor: '#d29922', backgroundColor: '#d2992222', yAxisID: 'y1', tension: .3, pointRadius: 2 }
+      ]
+    },
+    options: {
+      ...baseOpt,
+      scales: {
+        x: { grid: { display: false } },
+        y: { position: 'left', title: { display: true, text: 'USD/KRW (원)' }, grid: { color: colors.grid } },
+        y1: { position: 'right', title: { display: true, text: 'JPY (100엔) · CNY (원)' }, grid: { display: false } }
+      }
+    }
+  });
+
+  // 5) Gold
+  chartGoldInstance = new Chart(document.getElementById('chartGold'), {
+    type: 'line',
+    data: {
+      labels: monthsMacro,
+      datasets: [{ label: '금가격 (원/g 환산)', data: [176570,180930,185890,190850,191990,195110,207600,207790,203620,197600,191140,189700], borderColor: '#d29922', backgroundColor: '#d2992222', tension: .3, pointRadius: 2, fill: true }]
+    },
+    options: baseOpt
+  });
+
+  // 5-1) Silver
+  chartSilverInstance = new Chart(document.getElementById('chartSilver'), {
+    type: 'line',
+    data: {
+      labels: monthsMacro,
+      datasets: [{ label: '은가격 (원/g 환산)', data: [1520,1621,1722,1872,1987,2153,2448,2666,2740,2791,2811,2799], borderColor: '#8b949e', backgroundColor: '#8b949e22', tension: .3, pointRadius: 2, fill: true }]
+    },
+    options: baseOpt
+  });
+
+  // 6) Oil
+  chartOilInstance = new Chart(document.getElementById('chartOil'), {
+    type: 'line',
+    data: {
+      labels: monthsMacro,
+      datasets: [{ label: 'WTI 원유 ($/bbl)', data: [62,65,68,70,74,78,82,88,92,97,102,100], borderColor: '#a371f7', backgroundColor: '#a371f71a', tension: .3, pointRadius: 2, fill: true }]
+    },
+    options: baseOpt
+  });
+
+  // 7) Money Levels
+  const m1Level = [1300,1315,1332,1345,1357.8,1370,1376,1385,1402.9,1409,1416,1423];
+  chartM1LevelInstance = new Chart(document.getElementById('chartM1Level'), {
+    type: 'line',
+    data: {
+      labels: monthsMacro,
+      datasets: [{ label: 'M1 잔액 (조원)', data: m1Level, borderColor: '#388bfd', backgroundColor: '#388bfd22', tension: .3, pointRadius: 2, fill: true }]
+    },
+    options: baseOpt
+  });
+
+  // 8) M1/M2 Ratio
+  const m2Level = [3950,3980,4020,4080,4114,4140,4165,4190,4213,4240,4265,4290];
+  const m1m2Ratio = m1Level.map((v,i) => +(v / m2Level[i] * 100).toFixed(2));
+  chartM1M2RatioInstance = new Chart(document.getElementById('chartM1M2Ratio'), {
+    type: 'line',
+    data: {
+      labels: monthsMacro,
+      datasets: [{ label: 'M1/M2 비율 (%)', data: m1m2Ratio, borderColor: '#39c5cf', backgroundColor: '#39c5cf22', tension: .3, pointRadius: 2, fill: true }]
+    },
+    options: baseOpt
+  });
+
+  // 9) Money YoY Bar
+  chartMoneyInstance = new Chart(document.getElementById('chartMoney'), {
+    type: 'bar',
+    data: {
+      labels: ['25.10','25.11','25.12','26.01','26.02','26.03','26.04','26.05','26.06','26.07'],
+      datasets: [
+        { label: 'M1 전년比 (%)', data: [8.1,7.9,7.8,7.8,7.6,7.9,8.3,8.2,8.4,8.5], backgroundColor: '#388bfd' },
+        { label: 'M2 전년比 (%)', data: [8.7,7.9,6.2,5.4,4.9,5.1,5.6,5.7,5.9,6.0], backgroundColor: '#d29922' }
+      ]
+    },
+    options: baseOpt
+  });
+}
+
+// ==================== 7. 실시간 데이터 갱신 (Fetch APIs) ====================
+let lastUsdKrw = 1341;
+
+async function refreshLatestData() {
+  const btn = document.getElementById('refreshBtn');
+  const label = document.getElementById('refreshBtnLabel');
+  btn.disabled = true;
+  btn.classList.add('spinning');
+  label.textContent = '실시간 조회 중...';
+
+  let fxSuccess = false;
+  let metalSuccess = false;
+
+  // 1) FX: frankfurter.app
+  try {
+    const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=KRW,JPY,CNY,EUR');
+    if(res.ok) {
+      const data = await res.json();
+      const usdkrw = data.rates.KRW;
+      const jpykrw100 = (usdkrw / data.rates.JPY) * 100;
+      const cnykrw = usdkrw / data.rates.CNY;
+      const eurkrw = usdkrw / data.rates.EUR;
+      lastUsdKrw = usdkrw;
+
+      ['card-usdkrw', 'fx-usdkrw', 'ticker-usdkrw'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.innerHTML = `${fmt(usdkrw, 0)}<span class="metric-unit">원</span>`;
+      });
+      const jpyEl = document.getElementById('fx-jpykrw');
+      if(jpyEl) jpyEl.innerHTML = `${fmt(jpykrw100, 1)}<span class="metric-unit">원</span>`;
+      const cnyEl = document.getElementById('fx-cnykrw');
+      if(cnyEl) cnyEl.innerHTML = `${fmt(cnykrw, 1)}<span class="metric-unit">원</span>`;
+      const eurEl = document.getElementById('fx-eurkrw');
+      if(eurEl) eurEl.innerHTML = `${fmt(eurkrw, 0)}<span class="metric-unit">원</span>`;
+
+      const tsEl = document.getElementById('fxUpdatedTimestamp');
+      if(tsEl) tsEl.textContent = `※ ${new Date().toLocaleTimeString('ko-KR')} 기준 실시간 환율 (Frankfurter/ECB API) 반영됨`;
+
+      fxSuccess = true;
+    }
+  } catch(e) {
+    console.warn('FX API update error (local origin or network):', e);
+  }
+
+  // 2) Gold/Silver: goldprice.org
+  try {
+    const res2 = await fetch('https://data-asg.goldprice.org/dbXRates/USD');
+    if(res2.ok) {
+      const data2 = await res2.json();
+      const item = data2.items[0];
+      const goldUsd = item.xauPrice;
+      const silverUsd = item.xagPrice;
+
+      const goldKrwPerG = (goldUsd * lastUsdKrw) / 31.1035;
+      const silverKrwPerG = (silverUsd * lastUsdKrw) / 31.1035;
+
+      ['card-gold', 'cm-gold'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.innerHTML = `${fmt(goldKrwPerG, 0)}<span class="metric-unit">원/g</span>`;
+      });
+      const silvEl = document.getElementById('cm-silver');
+      if(silvEl) silvEl.innerHTML = `${fmt(silverKrwPerG, 0)}<span class="metric-unit">원/g</span>`;
+
+      const donEl = document.getElementById('cm-gold-don');
+      const donElCard = document.getElementById('card-gold-don');
+      const donVal = (goldKrwPerG * 3.75) / 10000;
+      if(donEl) donEl.innerHTML = `약 ${fmt(donVal, 0)}<span class="metric-unit">만원</span>`;
+      if(donElCard) donElCard.textContent = `국내 1돈(3.75g) 약 ${fmt(donVal, 0)}만원`;
+
+      metalSuccess = true;
+    }
+  } catch(e) {
+    console.warn('Metal API update error:', e);
+  }
+
+  const badge = document.getElementById('asofBadge');
+  if(badge) {
+    if(fxSuccess || metalSuccess) {
+      badge.innerHTML = `<span>⚡ 실시간 갱신: ${new Date().toLocaleTimeString('ko-KR')} (환율·귀금속 LIVE)</span>`;
+    } else {
+      badge.innerHTML = `<span>📅 기준일: 2026-09-11 (스냅샷 보존 / 로컬 차단 시 스냅샷 유지)</span>`;
+    }
+  }
+
+  btn.disabled = false;
+  btn.classList.remove('spinning');
+  label.textContent = '실시간 데이터 갱신';
+}
+
+// Window load init
+window.addEventListener('DOMContentLoaded', () => {
+  updateStockIndexChart();
+  renderComparisonChart();
+  initMacroCharts();
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,33 @@
+• conda update : conda update -n base conda
+• 가상 환경 설치 : conda create -n 가상환경이름 python=3.9
+• 가상 환경 활성화 : conda activate 가상환경 이름
+• 기본적인 패키지 설치
+	○ pip install --upgrade pip --user
+	○ pip install tensorflow==2.8.0
+	○ pip install tf-nightly
+	○ pip install pandas matplotlib seaborn scipy sklearn
+	○ pip install tensorflow-gpu==2.8.0
+	○ pip install keras
+	○ pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu113
+	○ pip install jupyter notebook
+	○ pip install ipykernel
+	○ python -m ipykernel install --user --name 가상환경이름 --display-name 표시할 가상환경 이름
+
+python -m ipykernel install --user --name ML03 --display-name ML03_GPU
+
+
+# .git 폴더 탐색
+$ ls -la .git
+$ cat .git/HEAD
+$ cat .git/config
+$ git ls-files --stage
+
+# 객체 조회
+$ git cat-file -p HEAD
+$ git cat-file -t a042389
+$ git log --oneline --graph
+
+# 상태 확인
+$ git status
+$ git reflog
+$ git fsck

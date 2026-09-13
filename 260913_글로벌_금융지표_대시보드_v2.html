@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>글로벌 금융지표 대시보드 v2</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+
+  :root{
+    --bg:#f7f7f5; --panel:#ffffff; --line:#e7e5e0; --ink:#1c1c1a; --sub:#6b6a66;
+    --accent:#8a1f2d; --accent2:#0f4c5c; --up:#b3382c; --down:#1f6f54; --gold:#a67c1e;
+    --shadow: 0 1px 2px rgba(0,0,0,0.04), 0 6px 20px rgba(0,0,0,0.04);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Noto Sans KR',sans-serif; -webkit-font-smoothing:antialiased;
+  }
+  header{
+    padding:28px 24px 16px; max-width:1180px; margin:0 auto;
+  }
+  header h1{ font-size:22px; font-weight:900; margin:0 0 4px; letter-spacing:-0.3px;}
+  header p{ margin:0; color:var(--sub); font-size:13px;}
+  .asof{
+    display:inline-block; margin-top:10px; font-size:12px; color:var(--accent2);
+    background:#eef4f5; border:1px solid #d7e4e6; padding:4px 10px; border-radius:20px;
+  }
+  .asof-row{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:10px; }
+  .asof-row .asof{ margin-top:0; }
+  .refresh-btn{
+    font-family:inherit; font-size:12.5px; font-weight:700; color:#fff; background:var(--accent);
+    border:none; border-radius:20px; padding:6px 14px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;
+    transition:opacity .15s;
+  }
+  .refresh-btn:hover{ opacity:.88; }
+  .refresh-btn:disabled{ opacity:.55; cursor:default; }
+  .refresh-btn .spin{ display:inline-block; animation:spinAnim 1s linear infinite; }
+  .refresh-btn.spinning .spin{ animation:spinAnim .7s linear infinite; }
+  @keyframes spinAnim{ from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+  .refresh-status{ font-size:11.5px; color:var(--sub); }
+  .refresh-status.ok{ color:var(--down); }
+  .refresh-status.err{ color:var(--up); }
+  .live-tag{
+    font-size:10px; font-weight:700; color:#0f4c5c; background:#e7f2ee; border-radius:8px;
+    padding:1px 6px; margin-left:6px; vertical-align:middle; display:none;
+  }
+  .live-tag.show{ display:inline-block; }
+
+  nav{
+    max-width:1180px; margin:0 auto; padding:0 24px; position:sticky; top:0; background:var(--bg);
+    z-index:20; padding-top:8px; padding-bottom:4px;
+  }
+  .tabs{
+    display:flex; gap:6px; overflow-x:auto; border-bottom:1px solid var(--line); padding-bottom:0;
+    scrollbar-width:none;
+  }
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab-btn{
+    flex:0 0 auto; background:none; border:none; font-family:inherit; font-size:13.5px; font-weight:500;
+    color:var(--sub); padding:10px 14px; cursor:pointer; border-bottom:2px solid transparent;
+    white-space:nowrap; transition:all .15s;
+  }
+  .tab-btn.active{ color:var(--accent); border-bottom-color:var(--accent); font-weight:700;}
+  .tab-btn:hover{ color:var(--ink);}
+
+  main{ max-width:1180px; margin:0 auto; padding:18px 24px 60px;}
+  .panel{ display:none; }
+  .panel.active{ display:block; animation:fade .25s ease;}
+  @keyframes fade{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
+
+  .grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-bottom:18px;}
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px 18px;
+    box-shadow:var(--shadow);
+  }
+  .card .label{ font-size:12px; color:var(--sub); margin-bottom:6px; display:flex; align-items:center; gap:6px;}
+  .card .value{ font-size:26px; font-weight:900; letter-spacing:-0.5px;}
+  .card .unit{ font-size:13px; font-weight:400; color:var(--sub); margin-left:2px;}
+  .card .delta{ font-size:12.5px; margin-top:6px; font-weight:500;}
+  .delta.up{ color:var(--up);} .delta.down{ color:var(--down);} .delta.flat{ color:var(--sub);}
+  .dot{ width:7px; height:7px; border-radius:50%; display:inline-block;}
+  .dot.kr{background:#0f4c5c;} .dot.us{background:#8a1f2d;} .dot.gold{background:#a67c1e;}
+  .dot.fx{background:#4a5a8a;} .dot.oil{background:#3a3a3a;} .dot.m{background:#6b8a4a;}
+
+  section.block{
+    background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:20px 22px;
+    margin-bottom:16px; box-shadow:var(--shadow);
+  }
+  section.block h2{ font-size:16px; margin:0 0 4px; font-weight:700;}
+  section.block .desc{ font-size:13px; color:var(--sub); margin:0 0 14px; line-height:1.6;}
+  .chart-wrap{ position:relative; height:260px; margin:10px 0 6px;}
+  .chart-wrap.tall{height:300px;}
+
+  table.data-table{ width:100%; border-collapse:collapse; font-size:13.5px; margin-top:8px;}
+  table.data-table th, table.data-table td{
+    text-align:right; padding:9px 10px; border-bottom:1px solid var(--line);
+  }
+  table.data-table th:first-child, table.data-table td:first-child{ text-align:left; color:var(--sub);}
+  table.data-table th{ font-weight:500; color:var(--sub); font-size:12px;}
+  table.data-table tr:last-child td{ border-bottom:none;}
+
+  .formula-box{
+    background:#fbfaf7; border:1px solid #eee3c8; border-left:3px solid var(--gold);
+    border-radius:10px; padding:14px 16px; margin:12px 0; font-size:14px; overflow-x:auto;
+  }
+  .formula-box .ftitle{ font-size:12.5px; color:var(--gold); font-weight:700; margin-bottom:6px;}
+  .formula-box .fnote{ font-size:12.5px; color:var(--sub); margin-top:8px; line-height:1.6;}
+
+  .badge{
+    display:inline-block; font-size:11px; padding:2px 8px; border-radius:20px; font-weight:700;
+    background:#f1efe9; color:var(--sub);
+  }
+  .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:720px){ .two-col{ grid-template-columns:1fr;} }
+
+  footer{ max-width:1180px; margin:0 auto; padding:10px 24px 40px; color:var(--sub); font-size:11.5px; line-height:1.7;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>글로벌 금융지표 대시보드 <span class="badge" style="font-size:12px; vertical-align:middle;">v2</span></h1>
+  <p>기준금리 · 미국 국채금리 · 외환 · 금 · 원자재 · 한국 통화량(M1·M2)</p>
+  <div class="asof-row">
+    <span class="asof" id="asofBadge">기준일: 2026-09-11 (검색 시점 최신값 반영, 스냅샷)</span>
+    <button class="refresh-btn" id="refreshBtn" onclick="refreshLatestData()">
+      <span class="spin">🔄</span><span id="refreshBtnLabel">검색 · 최신정보 업데이트</span>
+    </button>
+    <span class="refresh-status" id="refreshStatus"></span>
+  </div>
+</header>
+
+<nav>
+  <div class="tabs" id="tabbar">
+    <button class="tab-btn active" data-tab="dashboard">대시보드</button>
+    <button class="tab-btn" data-tab="rates">기준금리</button>
+    <button class="tab-btn" data-tab="treasury">미국 국채금리</button>
+    <button class="tab-btn" data-tab="fx">외환</button>
+    <button class="tab-btn" data-tab="commodity">금·원자재</button>
+    <button class="tab-btn" data-tab="money">한국 통화량</button>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ============ 대시보드 ============ -->
+  <div class="panel active" id="dashboard">
+    <div class="grid">
+      <div class="card">
+        <div class="label"><span class="dot kr"></span>한국 기준금리</div>
+        <div class="value">3.00<span class="unit">%</span></div>
+        <div class="delta up">▲ 0.25%p (2026.08.27, 2개월 연속 인상)</div>
+      </div>
+      <div class="card">
+        <div class="label"><span class="dot us"></span>미국 기준금리(FF target)</div>
+        <div class="value">3.50–3.75<span class="unit">%</span></div>
+        <div class="delta flat">동결 (2026.07.29) · 9/15-16 회의 대기</div>
+      </div>
+      <div class="card">
+        <div class="label"><span class="dot us"></span>美 10년 국채금리</div>
+        <div class="value">4.97<span class="unit">%</span></div>
+        <div class="delta up">최근 2년래 고점권 (2026.09.11)</div>
+      </div>
+      <div class="card">
+        <div class="label"><span class="dot fx"></span>원/달러<span class="live-tag" id="tag-dash-usdkrw">LIVE</span></div>
+        <div class="value" id="dash-usdkrw">1,341<span class="unit">원</span></div>
+        <div class="delta down" id="dash-usdkrw-delta">최근 1개월 강세(1,400→1,340원대)</div>
+      </div>
+      <div class="card">
+        <div class="label"><span class="dot gold"></span>국제 금가격(원화 환산)<span class="live-tag" id="tag-dash-gold">LIVE</span></div>
+        <div class="value" id="dash-gold">189,700<span class="unit">원/g</span></div>
+        <div class="delta up">사상 최고권 유지 · $4,400/oz 환산</div>
+      </div>
+      <div class="card">
+        <div class="label"><span class="dot oil"></span>WTI 원유</div>
+        <div class="value">99.99<span class="unit">$/bbl</span></div>
+        <div class="delta up">중동 정세 영향, 연초대비 +74%</div>
+      </div>
+      <div class="card">
+        <div class="label"><span class="dot m"></span>한국 M2(광의통화)</div>
+        <div class="value">4,210<span class="unit">조원</span></div>
+        <div class="delta up">전월대비 +0.6~0.8% 증가 추세</div>
+      </div>
+      <div class="card">
+        <div class="label"><span class="dot fx"></span>한미 금리차</div>
+        <div class="value">0.75<span class="unit">%p</span></div>
+        <div class="delta down">축소 (기존 1.00%p → 0.75%p)</div>
+      </div>
+    </div>
+
+    <section class="block">
+      <h2>종합 개요</h2>
+      <p class="desc">
+        한국은행은 2026년 7월(2.50→2.75%)에 이어 8월(2.75→3.00%)까지 두 달 연속 기준금리를 인상해 '백투백' 인상을 단행했습니다.
+        반면 미 연준(FOMC)은 7월 회의에서 3.50–3.75% 목표범위를 동결했고, 9월 15–16일 회의에서 추가 인상 여부가 시장의 핵심 변수입니다.
+        미국 장기 국채금리는 재정적자 우려와 인플레이션 압력으로 10년물이 5% 근접권까지 상승했고, 금값은 온스당 4,400달러 선에서 강세를 유지하고 있습니다.
+        원/달러 환율은 국내 수출 호조와 경상수지 흑자 기대로 최근 한 달 새 1,400원대에서 1,340원대로 빠르게 하락(원화 강세)했습니다.
+      </p>
+    </section>
+  </div>
+
+  <!-- ============ 기준금리 ============ -->
+  <div class="panel" id="rates">
+    <section class="block">
+      <h2>한국 · 미국 기준금리 추이</h2>
+      <p class="desc">한국은행 기준금리와 미 연준 정책금리(목표범위 상단 기준) 최근 12개월 추이입니다.</p>
+      <div class="chart-wrap"><canvas id="chartRates"></canvas></div>
+      <table class="data-table">
+        <tr><th>구분</th><th>현재 수준</th><th>최근 결정일</th><th>다음 회의</th></tr>
+        <tr><td>한국은행 기준금리</td><td>3.00%</td><td>2026-08-27 (+0.25%p)</td><td>2026-10-22</td></tr>
+        <tr><td>美 연준 목표범위</td><td>3.50–3.75%</td><td>2026-07-29 (동결)</td><td>2026-09-15~16</td></tr>
+      </table>
+    </section>
+
+    <section class="block">
+      <h2>실질금리 (피셔 방정식)</h2>
+      <p class="desc">명목금리에서 기대 인플레이션을 차감하면 실질적인 자금의 구매력 기준 금리를 구할 수 있습니다.</p>
+      <div class="formula-box">
+        <div class="ftitle">FISHER EQUATION</div>
+        <div class="tex">$$ r \approx i - \pi^{e} $$</div>
+        <div class="fnote">
+          r = 실질금리, i = 명목금리(기준금리), π<sup>e</sup> = 기대 인플레이션율.<br>
+          예) 한국 근원물가 상승률이 약 2.6%대(2026.7월 기준)라면, 실질 기준금리 ≈ 3.00% − 2.6% ≈ <b>+0.4%p</b> 수준.
+        </div>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>한미 금리차와 자본이동</h2>
+      <div class="formula-box">
+        <div class="ftitle">금리 격차 (INTEREST RATE DIFFERENTIAL)</div>
+        <div class="tex">$$ \Delta i = i_{US} - i_{KR} $$</div>
+        <div class="fnote">
+          미국 정책금리 상단(3.75%) − 한국 기준금리(3.00%) = <b>0.75%p</b>.<br>
+          금리차가 축소되면 원화 표시 자산의 상대적 매력이 높아져 외국인 자금 유출 압력과 원화 약세 압력이 완화되는 경향이 있습니다(다른 변수가 일정할 때).
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ 미국 국채금리 ============ -->
+  <div class="panel" id="treasury">
+    <div class="grid">
+      <div class="card">
+        <div class="label">3년물</div>
+        <div class="value">4.44<span class="unit">%</span></div>
+      </div>
+      <div class="card">
+        <div class="label">10년물</div>
+        <div class="value">4.97<span class="unit">%</span></div>
+      </div>
+      <div class="card">
+        <div class="label">30년물</div>
+        <div class="value">5.25<span class="unit">%</span></div>
+      </div>
+    </div>
+
+    <section class="block">
+      <h2>미국 국채 수익률곡선 (Yield Curve)</h2>
+      <p class="desc">만기별 국채금리를 연결한 수익률곡선입니다. 2026년 9월 10~11일 기준값입니다.</p>
+      <div class="chart-wrap"><canvas id="chartYieldCurve"></canvas></div>
+    </section>
+
+    <section class="block">
+      <h2>최근 12개월 10년물 금리 추이</h2>
+      <div class="chart-wrap"><canvas id="chartTreasuryTrend"></canvas></div>
+    </section>
+
+    <section class="block">
+      <h2>채권가격 – 수익률 관계</h2>
+      <div class="formula-box">
+        <div class="ftitle">BOND PRICING FORMULA</div>
+        <div class="tex">$$ P = \sum_{t=1}^{n} \frac{C}{(1+y)^{t}} + \frac{F}{(1+y)^{n}} $$</div>
+        <div class="fnote">
+          P = 채권가격, C = 표면이자(쿠폰), F = 액면가, y = 만기수익률(YTM), n = 잔존만기.<br>
+          수익률(y)이 상승하면 채권가격(P)은 하락합니다 — 최근 장기물(30년) 금리 상승은 장기채 가격 하락(평가손) 압력을 의미합니다.
+        </div>
+      </div>
+      <div class="formula-box">
+        <div class="ftitle">텀 스프레드 (기간 프리미엄)</div>
+        <div class="tex">$$ Spread_{10\text{-}3} = Y_{10Y} - Y_{3Y} $$</div>
+        <div class="fnote">
+          현재 스프레드 ≈ 4.97% − 4.44% = <b>+0.53%p</b>. 양(+)의 스프레드는 정상적인 우상향 수익률곡선을 의미하며,
+          이 값이 음(-)으로 전환되면(장단기 금리역전) 통상 경기침체 선행지표로 해석됩니다.
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ 외환 ============ -->
+  <div class="panel" id="fx">
+    <div class="grid">
+      <div class="card">
+        <div class="label">USD/KRW (달러)<span class="live-tag" id="tag-fx-usdkrw">LIVE</span></div>
+        <div class="value" id="fx-usdkrw">1,341<span class="unit">원</span></div>
+      </div>
+      <div class="card">
+        <div class="label">JPY/KRW (100엔)<span class="live-tag" id="tag-fx-jpykrw">LIVE</span></div>
+        <div class="value" id="fx-jpykrw">871<span class="unit">원</span></div>
+      </div>
+      <div class="card">
+        <div class="label">CNY/KRW (위안)<span class="live-tag" id="tag-fx-cnykrw">LIVE</span></div>
+        <div class="value" id="fx-cnykrw">201<span class="unit">원</span></div>
+      </div>
+      <div class="card">
+        <div class="label">EUR/KRW (유로)<span class="live-tag" id="tag-fx-eurkrw">LIVE</span></div>
+        <div class="value" id="fx-eurkrw">1,556<span class="unit">원</span></div>
+      </div>
+    </div>
+    <p class="desc" id="fxUpdatedNote" style="margin:-6px 0 14px; color:var(--sub);"></p>
+
+    <section class="block">
+      <h2>주요국 통화 대원화 환율 최근 추이</h2>
+      <p class="desc">최근 12개월 원/달러, 원/100엔, 원/위안 추이 (달러는 좌측축, 엔·위안은 우측축).</p>
+      <div class="chart-wrap tall"><canvas id="chartFx"></canvas></div>
+    </section>
+
+    <section class="block">
+      <h2>재정거래 환율 (교차환율) 계산식</h2>
+      <div class="formula-box">
+        <div class="ftitle">CROSS EXCHANGE RATE</div>
+        <div class="tex">$$ \text{EUR/KRW} = \text{USD/KRW} \times \text{EUR/USD} $$</div>
+        <div class="fnote">
+          예) USD/KRW 1,341원 × EUR/USD 1.16 ≈ <b>1,556원</b>. 직접 고시가 없는 통화쌍은 기축통화(달러)를 매개로 한 교차환율로 계산합니다.
+        </div>
+      </div>
+      <div class="formula-box">
+        <div class="ftitle">커버드 금리평가설 (COVERED INTEREST RATE PARITY)</div>
+        <div class="tex">$$ F = S \times \frac{1+i_{d}}{1+i_{f}} $$</div>
+        <div class="fnote">
+          F = 선물환율, S = 현물환율, i<sub>d</sub> = 자국(원화) 금리, i<sub>f</sub> = 외국(달러) 금리.<br>
+          한국 금리(3.00%)가 미국 금리(3.5~3.75%)보다 낮으므로, 이론상 원화는 달러 대비 선물 프리미엄(원화 선물환 절하) 상태가 성립합니다.
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ 금·원자재 ============ -->
+  <div class="panel" id="commodity">
+    <div class="grid">
+      <div class="card">
+        <div class="label"><span class="dot gold"></span>금 (Gold, 원화 환산)<span class="live-tag" id="tag-cm-gold">LIVE</span></div>
+        <div class="value" id="cm-gold">189,700<span class="unit">원/g</span></div>
+        <div class="delta flat" id="cm-gold-usd">$4,400/oz 기준</div>
+      </div>
+      <div class="card">
+        <div class="label">은 (Silver, 원화 환산)<span class="live-tag" id="tag-cm-silver">LIVE</span></div>
+        <div class="value" id="cm-silver">2,799<span class="unit">원/g</span></div>
+        <div class="delta flat" id="cm-silver-usd">$64.9/oz 기준</div>
+      </div>
+      <div class="card">
+        <div class="label"><span class="dot oil"></span>WTI 원유</div>
+        <div class="value">99.99<span class="unit">$/bbl</span></div>
+      </div>
+      <div class="card">
+        <div class="label">국내 순금 1돈(3.75g), 환산</div>
+        <div class="value" id="cm-gold-don">약 71<span class="unit">만원</span></div>
+      </div>
+    </div>
+    <p class="desc" id="cmUpdatedNote" style="margin:-6px 0 14px; color:var(--sub);">※ 원화 환산값은 국제 달러 시세 × 원/달러 환율로 계산되며, 검색 버튼으로 최신화됩니다.</p>
+
+    <section class="block">
+      <h2>금가격 최근 12개월 추이 (원/g 환산)</h2>
+      <p class="desc">국제 금 현물시세($/oz)를 매월 원/달러 환율로 환산한 원화 기준 추이입니다.</p>
+      <div class="chart-wrap"><canvas id="chartGold"></canvas></div>
+    </section>
+
+    <section class="block">
+      <h2>은가격 최근 12개월 추이 (원/g 환산)</h2>
+      <p class="desc">국제 은 현물시세($/oz)를 매월 원/달러 환율로 환산한 원화 기준 추이입니다.</p>
+      <div class="chart-wrap"><canvas id="chartSilver"></canvas></div>
+    </section>
+
+    <section class="block">
+      <h2>WTI 원유 최근 12개월 추이 ($/bbl)</h2>
+      <div class="chart-wrap"><canvas id="chartOil"></canvas></div>
+    </section>
+
+    <section class="block">
+      <h2>금 원화 환산가격 계산식</h2>
+      <div class="formula-box">
+        <div class="ftitle">GOLD PRICE IN KRW PER GRAM</div>
+        <div class="tex">$$ P_{KRW/g} = \frac{P_{USD/oz} \times S_{USD/KRW}}{31.1035} $$</div>
+        <div class="fnote">
+          31.1035 = 1 트로이온스(oz)를 그램(g)으로 환산하는 상수.<br>
+          예) (4,400 × 1,341) ÷ 31.1035 ≈ <b>189,700원/g</b> → 1돈(3.75g) ≈ 71만원 수준.
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ 통화량 ============ -->
+  <div class="panel" id="money">
+    <div class="grid">
+      <div class="card">
+        <div class="label">M1 (협의통화, 평잔)</div>
+        <div class="value">약 1,410<span class="unit">조원</span></div>
+        <div class="delta up">전년比 +8~9% · 2026.06월 기준</div>
+      </div>
+      <div class="card">
+        <div class="label">M2 (광의통화, 평잔)</div>
+        <div class="value">약 4,210<span class="unit">조원</span></div>
+        <div class="delta up">2026.06월 기준 잔액</div>
+      </div>
+      <div class="card">
+        <div class="label">Lf (금융기관유동성)</div>
+        <div class="value">약 6,203<span class="unit">조원</span></div>
+        <div class="delta up">2026.03월 기준 잔액</div>
+      </div>
+    </div>
+
+    <section class="block">
+      <h2>M1 금액(잔액) 최근 12개월 추이</h2>
+      <p class="desc">협의통화(M1) 평잔의 실제 금액 추이입니다(단위: 조원). 2026.02 1,357.8조원, 2026.06 1,402.9조원은 한국은행 발표 실측치이며, 그 외 월은 발표된 전월비 증감률을 반영해 보간한 참고값입니다.</p>
+      <div class="chart-wrap"><canvas id="chartM1Level"></canvas></div>
+    </section>
+
+    <section class="block">
+      <h2>M1 · M2 증가율 추이</h2>
+      <p class="desc">한국은행 발표 기준, 전년동월대비 증가율(%) 추이입니다. (2026년 각 월 발표치 기준)</p>
+      <div class="chart-wrap"><canvas id="chartMoney"></canvas></div>
+      <table class="data-table">
+        <tr><th>월</th><th>M1 잔액(조원)</th><th>M1 전년比(%)</th><th>M2 전년比(%)</th></tr>
+        <tr><td>2026.01</td><td>1,345.0</td><td>7.8</td><td>5.4</td></tr>
+        <tr><td>2026.02</td><td>1,357.8</td><td>7.6</td><td>4.9</td></tr>
+        <tr><td>2026.04</td><td>1,376.0(추정)</td><td>8.3</td><td>5.6</td></tr>
+        <tr><td>2026.06</td><td>1,402.9</td><td>10.0</td><td>6.0</td></tr>
+        <tr><td>2026.07(추정)</td><td>1,409.0(추정)</td><td>8.5</td><td>6.0</td></tr>
+      </table>
+      <p class="desc" style="margin-top:8px;">※ 굵게 표시되지 않은 잔액은 발표된 전월대비 증감률을 이용해 보간한 참고값이며, 2026.02 / 2026.06 값은 한국은행 실측 발표치입니다.</p>
+    </section>
+
+    <section class="block">
+      <h2>단기유동자금비율(M1/M2) 추이</h2>
+      <p class="desc">M1(협의통화) 잔액을 M2(광의통화) 잔액으로 나눈 비율입니다. 비율이 높아질수록 투자대기성 단기 부동자금이 늘고 있다는 의미로 해석됩니다.</p>
+      <div class="chart-wrap"><canvas id="chartM1M2Ratio"></canvas></div>
+    </section>
+
+    <section class="block">
+      <h2>통화승수 · 유동성 비율 공식</h2>
+      <div class="formula-box">
+        <div class="ftitle">통화승수 (MONEY MULTIPLIER)</div>
+        <div class="tex">$$ m = \frac{M2}{B} $$</div>
+        <div class="fnote">m = 통화승수, M2 = 광의통화, B = 본원통화. 한국은행이 공급한 본원통화 1원이 시중에서 몇 배의 통화로 창출되었는지를 나타내는 지표입니다.</div>
+      </div>
+      <div class="formula-box">
+        <div class="ftitle">단기유동자금비율 &amp; 통화유통속도</div>
+        <div class="tex">$$ \text{단기유동자금비율} = \frac{M1}{M2}, \qquad V = \frac{GDP}{M2} $$</div>
+        <div class="fnote">
+          M1/M2 비율이 상승하면 투자대기자금(단기 부동자금)이 늘어난 것으로 해석되고, 하락하면 자금이 실물경제·장기상품으로 이동했다는 신호로 해석됩니다.
+          유통속도(V)는 화폐 1단위가 일정 기간 거래에 사용된 평균 횟수를 의미합니다.
+        </div>
+      </div>
+    </section>
+  </div>
+
+</main>
+
+<footer>
+  ※ 상단 <b>[검색 · 최신정보 업데이트]</b> 버튼을 누르면 <b>환율(USD·JPY·CNY·EUR/KRW)</b>과 <b>금·은 시세(원화 환산)</b>는 공개 API(frankfurter.app, goldprice.org)를 통해 실시간 값으로 즉시 갱신됩니다(LIVE 표시).
+  단, <b>한국·미국 기준금리, 미국 국채금리(3·10·30년), WTI, 한국 통화량(M1·M2)</b>은 발표 주기가 정해져 있거나 무료 공개 API가 마땅치 않아 이 문서 작성 시점(2026-09-11)의 스냅샷 값을 유지합니다.<br>
+  ※ <b>"업데이트 실패" 안내가 뜨는 경우</b>: 이 HTML 파일을 다운로드 후 <code>content://</code> 또는 <code>file://</code> 경로로 바로 열면, 모바일 브라우저가 보안상 로컬 파일에서의 외부 서버 요청(fetch)을 오리진이 없는 요청으로 간주해 차단하는 경우가 많습니다(실제 인터넷 연결 여부와 무관). 이 경우 해결 방법은 ①PC/모바일 브라우저의 "새 탭에서 열기"로 정식 웹페이지처럼 열거나, ②파일을 웹호스팅(예: 사내 인트라넷, GitHub Pages, 간단한 정적 호스팅)에 올려 <code>https://</code> 주소로 접속하는 것입니다.<br>
+  ※ 본 대시보드의 수치는 2026년 9월 상순(약 9/7~9/11) 공개된 뉴스·통계 검색 결과를 기준으로 작성한 스냅샷이며, 실시간 시세와 다를 수 있습니다.
+  시계열 차트는 발표된 주요 시점 값을 바탕으로 추세를 보여주기 위해 구성한 것으로, 일부 구간은 보간된 참고용 데이터입니다.
+  투자 판단의 근거 자료로 사용하지 마시고, 실제 거래·투자 시에는 한국은행 경제통계시스템(ECOS), 연준(FRED), 각 은행 고시환율 등 공식 소스를 반드시 확인하시기 바랍니다.
+</footer>
+
+<script>
+// ---------- 탭 전환 ----------
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ---------- KaTeX 렌더링 ----------
+document.addEventListener('DOMContentLoaded', function() {
+  renderMathInElement(document.body, {
+    delimiters: [
+      {left:"$$", right:"$$", display:true},
+      {left:"$", right:"$", display:false}
+    ]
+  });
+});
+
+// ---------- 공통 차트 옵션 ----------
+Chart.defaults.font.family = "'Noto Sans KR', sans-serif";
+Chart.defaults.color = "#6b6a66";
+const months = ['25.10','25.11','25.12','26.01','26.02','26.03','26.04','26.05','26.06','26.07','26.08','26.09'];
+const baseOpt = {
+  responsive:true, maintainAspectRatio:false,
+  plugins:{ legend:{position:'top', labels:{boxWidth:10, font:{size:11}}}, tooltip:{mode:'index', intersect:false} },
+  interaction:{mode:'index', intersect:false},
+  scales:{ x:{grid:{display:false}}, y:{grid:{color:'#eeece7'}} }
+};
+
+// ---------- 1) 기준금리 ----------
+new Chart(document.getElementById('chartRates'), {
+  type:'line',
+  data:{ labels:months,
+    datasets:[
+      {label:'한국 기준금리(%)', data:[2.50,2.50,2.50,2.50,2.50,2.50,2.50,2.50,2.50,2.75,3.00,3.00], borderColor:'#0f4c5c', backgroundColor:'#0f4c5c22', tension:.3, pointRadius:3},
+      {label:'미국 정책금리 상단(%)', data:[3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75], borderColor:'#8a1f2d', backgroundColor:'#8a1f2d22', tension:.3, pointRadius:3, borderDash:[5,3]}
+    ]},
+  options: baseOpt
+});
+
+// ---------- 2) 국채 수익률곡선 ----------
+new Chart(document.getElementById('chartYieldCurve'), {
+  type:'line',
+  data:{ labels:['3개월','1년','2년','3년','5년','7년','10년','20년','30년'],
+    datasets:[{ label:'미국 국채 수익률(%)', data:[4.20,4.30,4.39,4.44,4.57,4.68,4.97,5.26,5.25],
+      borderColor:'#8a1f2d', backgroundColor:'#8a1f2d1a', fill:true, tension:.35, pointRadius:4, pointBackgroundColor:'#8a1f2d'}]},
+  options: baseOpt
+});
+
+// ---------- 3) 10년물 추이 ----------
+new Chart(document.getElementById('chartTreasuryTrend'), {
+  type:'line',
+  data:{ labels:months,
+    datasets:[{label:'美 10년물 금리(%)', data:[4.05,4.10,4.18,4.22,4.15,4.28,4.35,4.42,4.55,4.70,4.85,4.97],
+      borderColor:'#0f4c5c', backgroundColor:'#0f4c5c22', tension:.3, pointRadius:2, fill:true}]},
+  options: baseOpt
+});
+
+// ---------- 4) 외환 ----------
+new Chart(document.getElementById('chartFx'), {
+  type:'line',
+  data:{ labels:months,
+    datasets:[
+      {label:'USD/KRW', data:[1390,1400,1410,1420,1405,1395,1410,1430,1420,1400,1345,1341], borderColor:'#4a5a8a', backgroundColor:'#4a5a8a22', yAxisID:'y', tension:.3, pointRadius:2},
+      {label:'JPY/KRW(100엔)', data:[905,910,900,895,890,885,880,878,875,873,872,871], borderColor:'#b3382c', backgroundColor:'#b3382c22', yAxisID:'y1', tension:.3, pointRadius:2},
+      {label:'CNY/KRW', data:[196,197,198,199,200,199,201,202,203,202,201,201], borderColor:'#a67c1e', backgroundColor:'#a67c1e22', yAxisID:'y1', tension:.3, pointRadius:2}
+    ]},
+  options:{ ...baseOpt,
+    scales:{
+      x:{grid:{display:false}},
+      y:{ position:'left', title:{display:true,text:'USD/KRW(원)'}, grid:{color:'#eeece7'} },
+      y1:{ position:'right', title:{display:true,text:'JPY(100엔)·CNY (원)'}, grid:{display:false} }
+    }
+  }
+});
+
+// ---------- 5) 금값 (원화 환산, 원/g) ----------
+// 국제 금가격($/oz) × 해당월 원/달러 환율 ÷ 31.1035(1oz→g 환산 상수)
+new Chart(document.getElementById('chartGold'), {
+  type:'line',
+  data:{ labels:months,
+    datasets:[{label:'금가격(원/g 환산)', data:[176570,180930,185890,190850,191990,195110,207600,207790,203620,197600,191140,189700],
+      borderColor:'#a67c1e', backgroundColor:'#a67c1e22', tension:.3, pointRadius:2, fill:true}]},
+  options: baseOpt
+});
+
+// ---------- 5-1) 은값 (원화 환산, 원/g) ----------
+new Chart(document.getElementById('chartSilver'), {
+  type:'line',
+  data:{ labels:months,
+    datasets:[{label:'은가격(원/g 환산)', data:[1520,1621,1722,1872,1987,2153,2448,2666,2740,2791,2811,2799],
+      borderColor:'#7a7a72', backgroundColor:'#7a7a7222', tension:.3, pointRadius:2, fill:true}]},
+  options: baseOpt
+});
+
+// ---------- 6) WTI ----------
+new Chart(document.getElementById('chartOil'), {
+  type:'line',
+  data:{ labels:months,
+    datasets:[{label:'WTI 원유($/bbl)', data:[62,65,68,70,74,78,82,88,92,97,102,100],
+      borderColor:'#3a3a3a', backgroundColor:'#3a3a3a1a', tension:.3, pointRadius:2, fill:true}]},
+  options: baseOpt
+});
+
+// ---------- 6-1) M1 금액(잔액, 조원) ----------
+const m1Level = [1300,1315,1332,1345,1357.8,1370,1376,1385,1402.9,1409,1416,1423];
+new Chart(document.getElementById('chartM1Level'), {
+  type:'line',
+  data:{ labels:months,
+    datasets:[{label:'M1 잔액(조원)', data:m1Level,
+      borderColor:'#0f4c5c', backgroundColor:'#0f4c5c22', tension:.3, pointRadius:2, fill:true}]},
+  options: baseOpt
+});
+
+// ---------- 6-2) M1/M2 비율 ----------
+const m2Level = [3950,3980,4020,4080,4114,4140,4165,4190,4213,4240,4265,4290];
+const m1m2Ratio = m1Level.map((v,i)=> +(v / m2Level[i] * 100).toFixed(2));
+new Chart(document.getElementById('chartM1M2Ratio'), {
+  type:'line',
+  data:{ labels:months,
+    datasets:[{label:'M1/M2 비율(%)', data:m1m2Ratio,
+      borderColor:'#6b8a4a', backgroundColor:'#6b8a4a22', tension:.3, pointRadius:2, fill:true}]},
+  options: baseOpt
+});
+
+// ---------- 최신정보 새로고침 (검색 버튼) ----------
+let lastUsdKrw = 1341; // 금 원화환산 계산용 기본값(스냅샷)
+
+function fmt(num, digits){
+  return num.toLocaleString('ko-KR', {maximumFractionDigits: digits, minimumFractionDigits: 0});
+}
+
+function showLive(id){
+  const t = document.getElementById('tag-'+id);
+  if(t) t.classList.add('show');
+}
+
+async function refreshLatestData(){
+  const btn = document.getElementById('refreshBtn');
+  const label = document.getElementById('refreshBtnLabel');
+  const status = document.getElementById('refreshStatus');
+  btn.disabled = true; btn.classList.add('spinning');
+  label.textContent = '최신정보 검색 중...';
+  status.textContent = '';
+  status.className = 'refresh-status';
+
+  const results = { fx:false, metal:false };
+  const errs = { fx:'', metal:'' };
+
+  // 1) 환율: frankfurter.app (ECB 기준, 무료·키 불필요)
+  try{
+    const r = await fetch('https://api.frankfurter.app/latest?from=USD&to=KRW,JPY,CNY,EUR');
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    const usdkrw = j.rates.KRW;
+    const jpykrw100 = (usdkrw / j.rates.JPY) * 100;
+    const cnykrw = usdkrw / j.rates.CNY;
+    const eurkrw = usdkrw / j.rates.EUR;
+
+    lastUsdKrw = usdkrw;
+
+    ['dash-usdkrw','fx-usdkrw'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.innerHTML = fmt(usdkrw,0) + '<span class="unit">원</span>';
+    });
+    const jpyEl = document.getElementById('fx-jpykrw');
+    if(jpyEl) jpyEl.innerHTML = fmt(jpykrw100,1) + '<span class="unit">원</span>';
+    const cnyEl = document.getElementById('fx-cnykrw');
+    if(cnyEl) cnyEl.innerHTML = fmt(cnykrw,1) + '<span class="unit">원</span>';
+    const eurEl = document.getElementById('fx-eurkrw');
+    if(eurEl) eurEl.innerHTML = fmt(eurkrw,0) + '<span class="unit">원</span>';
+
+    ['dash-usdkrw','fx-usdkrw','fx-jpykrw','fx-cnykrw','fx-eurkrw'].forEach(showLive);
+
+    const now = new Date();
+    const stamp = now.toLocaleString('ko-KR');
+    const fxNote = document.getElementById('fxUpdatedNote');
+    if(fxNote) fxNote.textContent = '※ ' + stamp + ' 기준 실시간 환율(frankfurter.app / ECB 참조환율) 적용됨';
+    const dashDelta = document.getElementById('dash-usdkrw-delta');
+    if(dashDelta){ dashDelta.textContent = '실시간 갱신: ' + now.toLocaleTimeString('ko-KR'); dashDelta.className='delta flat'; }
+
+    results.fx = true;
+  }catch(e){
+    console.error('FX fetch failed', e);
+    errs.fx = (e && e.message) ? e.message : String(e);
+  }
+
+  // 2) 금·은 시세: goldprice.org 공개 데이터 피드 (달러 → 원화/g 환산해서 표시)
+  try{
+    const r2 = await fetch('https://data-asg.goldprice.org/dbXRates/USD');
+    if(!r2.ok) throw new Error('HTTP ' + r2.status);
+    const j2 = await r2.json();
+    const item = j2.items[0];
+    const goldUsd = item.xauPrice;   // $/oz
+    const silverUsd = item.xagPrice; // $/oz
+
+    const goldKrwPerG = (goldUsd * lastUsdKrw) / 31.1035;
+    const silverKrwPerG = (silverUsd * lastUsdKrw) / 31.1035;
+
+    ['dash-gold','cm-gold'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.innerHTML = fmt(goldKrwPerG,0) + '<span class="unit">원/g</span>';
+    });
+    const silverEl = document.getElementById('cm-silver');
+    if(silverEl) silverEl.innerHTML = fmt(silverKrwPerG,0) + '<span class="unit">원/g</span>';
+
+    const goldUsdNote = document.getElementById('cm-gold-usd');
+    if(goldUsdNote) goldUsdNote.textContent = '$' + fmt(goldUsd,0) + '/oz 기준';
+    const silverUsdNote = document.getElementById('cm-silver-usd');
+    if(silverUsdNote) silverUsdNote.textContent = '$' + fmt(silverUsd,1) + '/oz 기준';
+
+    // 국내 1돈 환산 (3.75g)
+    const donEl = document.getElementById('cm-gold-don');
+    if(donEl){
+      const donPrice = goldKrwPerG * 3.75;
+      donEl.innerHTML = '약 ' + fmt(donPrice/10000,0) + '<span class="unit">만원</span>';
+    }
+
+    ['dash-gold','cm-gold','cm-silver'].forEach(showLive);
+
+    const now2 = new Date();
+    const cmNote = document.getElementById('cmUpdatedNote');
+    if(cmNote) cmNote.textContent = '※ ' + now2.toLocaleString('ko-KR') + ' 기준 실시간 금·은 시세(goldprice.org, 원화 환산) 적용됨';
+
+    results.metal = true;
+  }catch(e){
+    console.error('Metal fetch failed', e);
+    errs.metal = (e && e.message) ? e.message : String(e);
+  }
+
+  // 상태 메시지 (실패 원인까지 표시)
+  if(results.fx && results.metal){
+    status.textContent = '✓ 환율·금은 시세 업데이트 완료';
+    status.classList.add('ok');
+  } else if(results.fx || results.metal){
+    status.textContent = '△ 일부만 업데이트됨 — ' +
+      (results.fx ? '환율 성공' : ('환율 실패: ' + errs.fx)) + ' / ' +
+      (results.metal ? '금은 성공' : ('금은 실패: ' + errs.metal));
+    status.classList.add('err');
+  } else {
+    status.textContent = '✕ 업데이트 실패 [' + (errs.fx||errs.metal) + '] — 로컬 파일(file/content://)로 열면 브라우저가 외부 API 요청을 차단하는 경우가 많습니다. 스냅샷 값 유지';
+    status.classList.add('err');
+  }
+
+  const badge = document.getElementById('asofBadge');
+  if(badge && (results.fx || results.metal)){
+    badge.textContent = '최종 업데이트: ' + new Date().toLocaleString('ko-KR') + ' (기준금리·국채·통화량은 발표주기 특성상 스냅샷 유지)';
+  }
+
+  btn.disabled = false; btn.classList.remove('spinning');
+  label.textContent = '검색 · 최신정보 업데이트';
+}
+
+// ---------- 7) 통화량 ----------
+new Chart(document.getElementById('chartMoney'), {
+  type:'bar',
+  data:{ labels:['25.10','25.11','25.12','26.01','26.02','26.03','26.04','26.05(추정)','26.06(추정)','26.07(추정)'],
+    datasets:[
+      {label:'M1 전년比(%)', data:[8.1,7.9,7.8,7.8,7.6,7.9,8.3,8.2,8.4,8.5], backgroundColor:'#0f4c5c'},
+      {label:'M2 전년比(%)', data:[8.7,7.9,6.2,5.4,4.9,5.1,5.6,5.7,5.9,6.0], backgroundColor:'#a67c1e'}
+    ]},
+  options: baseOpt
+});
+</script>
+
+</body>
+</html>
