@@ -1346,8 +1346,21 @@
     <p class="block-desc" id="fxUpdatedTimestamp" style="color:var(--text-muted); font-size:12px; margin-top:-6px;"></p>
 
     <div class="content-block">
-      <div class="block-title">주요 통화 대 원화 환율 추이 (최근 12개월)</div>
-      <p class="block-desc">USD/KRW는 좌측 축(원), JPY(100엔) 및 CNY는 우측 축(원) 기준입니다.</p>
+      <div class="block-title-row">
+        <div>
+          <h2 class="block-title" id="fxChartTitle">주요 통화 대 원화 환율 추이</h2>
+          <p class="block-desc" style="margin-bottom:0;" id="fxChartDesc">USD/KRW는 좌측 축(원), JPY(100엔) 및 CNY는 우측 축(원) 기준입니다. (최근 1년 월별)</p>
+        </div>
+        <div class="ts-control-group">
+          <span class="ts-label">비교 기간</span>
+          <div class="pill-group" id="fxHorizonGroup">
+            <button class="pill-btn" onclick="setFxHorizon('1m')">1개월 (일별)</button>
+            <button class="pill-btn active" onclick="setFxHorizon('1y')">1년 (월별)</button>
+            <button class="pill-btn" onclick="setFxHorizon('5y')">5년 (분기/연별)</button>
+            <button class="pill-btn" onclick="setFxHorizon('10y')">10년 (연별)</button>
+          </div>
+        </div>
+      </div>
       <div class="chart-container tall"><canvas id="chartFx"></canvas></div>
     </div>
 
@@ -1404,19 +1417,52 @@
       </div>
     </div>
 
+    <!-- Commodity Time Horizon Selector -->
+    <div class="content-block" style="margin-bottom: 16px; padding: 14px 20px;">
+      <div class="block-title-row" style="margin-bottom:0;">
+        <div>
+          <h3 class="block-title" style="font-size:15px; margin-bottom:2px;">국제 귀금속(금·은) 및 원유(WTI) 시계열 조회 기간</h3>
+          <p class="block-desc" style="margin-bottom:0; font-size:12.5px;">국제 금·은 시세(원화 환산) 및 WTI 원유 선물의 시계열 추이 (단기 1개월, 중기 1년, 장기 5년·10년)</p>
+        </div>
+        <div class="ts-control-group">
+          <span class="ts-label">비교 기간</span>
+          <div class="pill-group" id="cmHorizonGroup">
+            <button class="pill-btn" onclick="setCmHorizon('1m')">1개월 (일별)</button>
+            <button class="pill-btn active" onclick="setCmHorizon('1y')">1년 (월별)</button>
+            <button class="pill-btn" onclick="setCmHorizon('5y')">5년 (분기/연별)</button>
+            <button class="pill-btn" onclick="setCmHorizon('10y')">10년 (연별)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="grid-2col">
       <div class="content-block">
-        <div class="block-title">금 가격 추이 (원/g 환산)</div>
+        <div class="block-title" id="goldChartTitle">금 가격 추이 (원/g 환산 - 최근 1년 월별)</div>
         <div class="chart-container"><canvas id="chartGold"></canvas></div>
       </div>
       <div class="content-block">
-        <div class="block-title">은 가격 추이 (원/g 환산)</div>
+        <div class="block-title" id="silverChartTitle">은 가격 추이 (원/g 환산 - 최근 1년 월별)</div>
         <div class="chart-container"><canvas id="chartSilver"></canvas></div>
       </div>
     </div>
 
     <div class="content-block">
-      <div class="block-title">WTI 원유 최근 12개월 추이 ($/bbl)</div>
+      <div class="block-title-row">
+        <div>
+          <h2 class="block-title" id="oilChartTitle">WTI 원유 가격 추이 ($/bbl)</h2>
+          <p class="block-desc" style="margin-bottom:0;" id="oilChartDesc">국제 유가(서부 텍사스산 원유) 시계열 추이 (최근 1년 월별)</p>
+        </div>
+        <div class="ts-control-group">
+          <span class="ts-label">비교 기간</span>
+          <div class="pill-group" id="oilHorizonGroup">
+            <button class="pill-btn" onclick="setOilHorizon('1m')">1개월 (일별)</button>
+            <button class="pill-btn active" onclick="setOilHorizon('1y')">1년 (월별)</button>
+            <button class="pill-btn" onclick="setOilHorizon('5y')">5년 (분기/연별)</button>
+            <button class="pill-btn" onclick="setOilHorizon('10y')">10년 (연별)</button>
+          </div>
+        </div>
+      </div>
       <div class="chart-container short"><canvas id="chartOil"></canvas></div>
     </div>
 
@@ -1461,19 +1507,38 @@
       </div>
     </div>
 
+    <!-- Money Supply Time Horizon Selector -->
+    <div class="content-block" style="margin-bottom: 16px; padding: 14px 20px;">
+      <div class="block-title-row" style="margin-bottom:0;">
+        <div>
+          <h3 class="block-title" style="font-size:15px; margin-bottom:2px;">한국은행 통화량(M1·M2) 시계열 조회 기간</h3>
+          <p class="block-desc" style="margin-bottom:0; font-size:12.5px;">단기(1개월 일별/속보) · 중기(1년 월별) · 장기(5년/10년 연별) 통화 유동성 추이</p>
+        </div>
+        <div class="ts-control-group">
+          <span class="ts-label">비교 기간</span>
+          <div class="pill-group" id="moneyHorizonGroup">
+            <button class="pill-btn" onclick="setMoneyHorizon('1m')">1개월 (일별)</button>
+            <button class="pill-btn active" onclick="setMoneyHorizon('1y')">1년 (월별)</button>
+            <button class="pill-btn" onclick="setMoneyHorizon('5y')">5년 (분기/연별)</button>
+            <button class="pill-btn" onclick="setMoneyHorizon('10y')">10년 (연별)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="grid-2col">
       <div class="content-block">
-        <div class="block-title">M1 통화량 잔액 추이 (조원)</div>
+        <div class="block-title" id="m1LevelTitle">M1 통화량 잔액 추이 (조원 - 최근 1년 월별)</div>
         <div class="chart-container"><canvas id="chartM1Level"></canvas></div>
       </div>
       <div class="content-block">
-        <div class="block-title">단기유동자금비율 (M1/M2, %) 추이</div>
+        <div class="block-title" id="m1m2RatioTitle">단기유동자금비율 (M1/M2, % - 최근 1년 월별)</div>
         <div class="chart-container"><canvas id="chartM1M2Ratio"></canvas></div>
       </div>
     </div>
 
     <div class="content-block">
-      <div class="block-title">M1 · M2 전년동월대비 증가율(%) 추이</div>
+      <div class="block-title" id="moneyYoYTitle">M1 · M2 전년비 증가율(%) 추이 (최근 1년 월별)</div>
       <div class="chart-container short"><canvas id="chartMoney"></canvas></div>
     </div>
 
@@ -2174,6 +2239,217 @@ function setRatesView(range) {
   }
 }
 
+// ==================== 외환(FX) 시계열 데이터 및 기간 전환 ====================
+const fxTimeData = {
+  '1m': {
+    labels: datesDaily,
+    usd: [1392,1390,1388,1385,1386,1382,1380,1378,1375,1372,1370,1368,1366,1365,1362,1360,1358,1355,1356,1352,1350,1348,1347,1345,1346,1348,1344,1342,1341,1341],
+    jpy: [898,896,895,892,893,890,888,887,885,884,882,881,880,879,878,876,875,874,875,873,872,871,872,871,872,873,871,870,871,871],
+    cny: [197,197,198,198,198,199,199,199,200,200,200,201,201,201,201,202,202,201,201,202,202,201,201,201,202,202,201,201,201,201]
+  },
+  '1y': {
+    labels: monthsMacro,
+    usd: [1390,1400,1410,1420,1405,1395,1410,1430,1420,1400,1345,1341],
+    jpy: [905,910,900,895,890,885,880,878,875,873,872,871],
+    cny: [196,197,198,199,200,199,201,202,203,202,201,201]
+  },
+  '5y': {
+    labels: ['2022', '2023', '2024', '2025', '2026(E)'],
+    usd: [1292, 1305, 1365, 1420, 1341],
+    jpy: [985, 920, 890, 875, 871],
+    cny: [191, 182, 188, 196, 201]
+  },
+  '10y': {
+    labels: datesYearly,
+    usd: [1070, 1115, 1156, 1086, 1188, 1292, 1305, 1365, 1420, 1341],
+    jpy: [950, 1005, 1060, 1050, 1030, 985, 920, 890, 875, 871],
+    cny: [164, 162, 166, 167, 186, 191, 182, 188, 196, 201]
+  }
+};
+
+let currentFxHorizon = '1y';
+function setFxHorizon(h) {
+  currentFxHorizon = h;
+  const group = document.getElementById('fxHorizonGroup');
+  if(group) {
+    group.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+    const target = Array.from(group.querySelectorAll('.pill-btn')).find(b => b.getAttribute('onclick')?.includes(`'${h}'`));
+    if(target) target.classList.add('active');
+  }
+  const d = fxTimeData[h];
+  if(chartFxInstance && d) {
+    chartFxInstance.data.labels = d.labels;
+    chartFxInstance.data.datasets[0].data = d.usd;
+    chartFxInstance.data.datasets[1].data = d.jpy;
+    chartFxInstance.data.datasets[2].data = d.cny;
+    chartFxInstance.data.datasets.forEach(ds => {
+      ds.pointRadius = d.labels.length > 20 ? 1.5 : 3;
+    });
+    chartFxInstance.update();
+  }
+  const desc = document.getElementById('fxChartDesc');
+  if(desc) {
+    const periodText = { '1m': '최근 1개월 (일별)', '1y': '최근 1년 (월별)', '5y': '최근 5년 (분기/연별)', '10y': '최근 10년 (연별)' }[h];
+    desc.textContent = `USD/KRW는 좌측 축(원), JPY(100엔) 및 CNY는 우측 축(원) 기준입니다. (${periodText})`;
+  }
+}
+
+// ==================== 귀금속(금·은) 및 원유 시계열 데이터 및 기간 전환 ====================
+const cmTimeData = {
+  '1m': {
+    labels: datesDaily,
+    gold: [183500,183800,184200,184500,184100,184900,185200,185600,186100,186500,186000,186800,187200,187500,187100,187900,188300,188600,188200,188800,189100,189500,189200,189400,189700,189900,189500,189600,189700,189700],
+    silver: [2680,2690,2705,2715,2710,2725,2730,2745,2750,2760,2755,2768,2775,2780,2770,2785,2790,2795,2785,2792,2795,2800,2790,2795,2798,2805,2795,2798,2799,2799],
+    oil: [94.5,95.0,95.8,96.2,95.5,96.0,96.8,97.5,97.2,98.0,98.5,99.1,98.7,99.5,100.2,100.8,101.5,101.0,101.8,102.2,101.5,102.0,101.2,100.8,100.5,100.2,99.8,100.1,99.99,99.99]
+  },
+  '1y': {
+    labels: monthsMacro,
+    gold: [176570,180930,185890,190850,191990,195110,207600,207790,203620,197600,191140,189700],
+    silver: [1520,1621,1722,1872,1987,2153,2448,2666,2740,2791,2811,2799],
+    oil: [62,65,68,70,74,78,82,88,92,97,102,100]
+  },
+  '5y': {
+    labels: ['2022', '2023', '2024', '2025', '2026(E)'],
+    gold: [75800, 86400, 115200, 158000, 189700],
+    silver: [980, 1050, 1380, 2100, 2799],
+    oil: [94.4, 77.6, 78.5, 85.0, 100.0]
+  },
+  '10y': {
+    labels: datesYearly,
+    gold: [44500, 46200, 56800, 68500, 69300, 75800, 86400, 115200, 158000, 189700],
+    silver: [610, 580, 670, 940, 890, 980, 1050, 1380, 2100, 2799],
+    oil: [50.8, 65.2, 57.0, 39.3, 68.1, 94.4, 77.6, 78.5, 85.0, 100.0]
+  }
+};
+
+let currentCmHorizon = '1y';
+function setCmHorizon(h) {
+  currentCmHorizon = h;
+  const group = document.getElementById('cmHorizonGroup');
+  if(group) {
+    group.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+    const target = Array.from(group.querySelectorAll('.pill-btn')).find(b => b.getAttribute('onclick')?.includes(`'${h}'`));
+    if(target) target.classList.add('active');
+  }
+  const d = cmTimeData[h];
+  if(chartGoldInstance && d) {
+    chartGoldInstance.data.labels = d.labels;
+    chartGoldInstance.data.datasets[0].data = d.gold;
+    chartGoldInstance.data.datasets[0].pointRadius = d.labels.length > 20 ? 1.5 : 3;
+    chartGoldInstance.update();
+  }
+  if(chartSilverInstance && d) {
+    chartSilverInstance.data.labels = d.labels;
+    chartSilverInstance.data.datasets[0].data = d.silver;
+    chartSilverInstance.data.datasets[0].pointRadius = d.labels.length > 20 ? 1.5 : 3;
+    chartSilverInstance.update();
+  }
+  const periodText = { '1m': '최근 1개월 (일별)', '1y': '최근 1년 (월별)', '5y': '최근 5년 (분기/연별)', '10y': '최근 10년 (연별)' }[h];
+  const gTitle = document.getElementById('goldChartTitle');
+  if(gTitle) gTitle.textContent = `금 가격 추이 (원/g 환산 - ${periodText})`;
+  const sTitle = document.getElementById('silverChartTitle');
+  if(sTitle) sTitle.textContent = `은 가격 추이 (원/g 환산 - ${periodText})`;
+
+  // Also sync WTI Oil
+  setOilHorizon(h);
+}
+
+let currentOilHorizon = '1y';
+function setOilHorizon(h) {
+  currentOilHorizon = h;
+  const group = document.getElementById('oilHorizonGroup');
+  if(group) {
+    group.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+    const target = Array.from(group.querySelectorAll('.pill-btn')).find(b => b.getAttribute('onclick')?.includes(`'${h}'`));
+    if(target) target.classList.add('active');
+  }
+  const d = cmTimeData[h];
+  if(chartOilInstance && d) {
+    chartOilInstance.data.labels = d.labels;
+    chartOilInstance.data.datasets[0].data = d.oil;
+    chartOilInstance.data.datasets[0].pointRadius = d.labels.length > 20 ? 1.5 : 3;
+    chartOilInstance.update();
+  }
+  const periodText = { '1m': '최근 1개월 (일별)', '1y': '최근 1년 (월별)', '5y': '최근 5년 (분기/연별)', '10y': '최근 10년 (연별)' }[h];
+  const oTitle = document.getElementById('oilChartTitle');
+  if(oTitle) oTitle.textContent = `WTI 원유 가격 추이 ($/bbl)`;
+  const oDesc = document.getElementById('oilChartDesc');
+  if(oDesc) oDesc.textContent = `국제 유가(서부 텍사스산 원유) 시계열 추이 (${periodText})`;
+}
+
+// ==================== 한국 통화량 시계열 데이터 및 기간 전환 ====================
+const moneyTimeData = {
+  '1m': {
+    labels: datesDaily,
+    m1: [1410,1411,1412,1413,1413,1414,1415,1416,1417,1417,1418,1419,1419,1420,1420,1421,1421,1422,1422,1422,1423,1423,1423,1423,1423,1423,1423,1423,1423,1423],
+    ratio: [33.2,33.2,33.2,33.3,33.3,33.3,33.3,33.4,33.4,33.4,33.4,33.4,33.4,33.4,33.5,33.5,33.5,33.5,33.5,33.5,33.5,33.5,33.5,33.5,33.5,33.5,33.5,33.5,33.5,33.5],
+    yoyLabels: ['08.01','08.08','08.14','08.22','08.29','09.05','09.12'],
+    m1YoY: [8.2, 8.3, 8.3, 8.4, 8.4, 8.5, 8.5],
+    m2YoY: [5.8, 5.8, 5.9, 5.9, 6.0, 6.0, 6.0]
+  },
+  '1y': {
+    labels: monthsMacro,
+    m1: [1300,1315,1332,1345,1357.8,1370,1376,1385,1402.9,1409,1416,1423],
+    ratio: [32.9,33.0,33.1,33.0,33.0,33.1,33.0,33.1,33.3,33.2,33.2,33.2],
+    yoyLabels: ['25.10','25.11','25.12','26.01','26.02','26.03','26.04','26.05','26.06','26.07','26.08','26.09'],
+    m1YoY: [8.1,7.9,7.8,7.8,7.6,7.9,8.3,8.2,8.4,8.5,8.5,8.5],
+    m2YoY: [8.7,7.9,6.2,5.4,4.9,5.1,5.6,5.7,5.9,6.0,6.0,6.0]
+  },
+  '5y': {
+    labels: ['2022', '2023', '2024', '2025', '2026(E)'],
+    m1: [1220, 1180, 1250, 1340, 1423],
+    ratio: [32.5, 30.4, 31.2, 32.3, 33.2],
+    yoyLabels: ['2022', '2023', '2024', '2025', '2026(E)'],
+    m1YoY: [-4.5, -3.3, 5.9, 7.2, 8.5],
+    m2YoY: [5.4, 3.5, 4.8, 5.5, 6.0]
+  },
+  '10y': {
+    labels: datesYearly,
+    m1: [810, 855, 920, 1150, 1340, 1220, 1180, 1250, 1340, 1423],
+    ratio: [32.0, 31.7, 31.6, 35.9, 37.1, 32.5, 30.4, 31.2, 32.3, 33.2],
+    yoyLabels: datesYearly,
+    m1YoY: [9.2, 5.6, 7.6, 25.0, 16.5, -4.5, -3.3, 5.9, 7.2, 8.5],
+    m2YoY: [5.5, 6.7, 7.8, 10.0, 12.8, 5.4, 3.5, 4.8, 5.5, 6.0]
+  }
+};
+
+let currentMoneyHorizon = '1y';
+function setMoneyHorizon(h) {
+  currentMoneyHorizon = h;
+  const group = document.getElementById('moneyHorizonGroup');
+  if(group) {
+    group.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+    const target = Array.from(group.querySelectorAll('.pill-btn')).find(b => b.getAttribute('onclick')?.includes(`'${h}'`));
+    if(target) target.classList.add('active');
+  }
+  const d = moneyTimeData[h];
+  if(chartM1LevelInstance && d) {
+    chartM1LevelInstance.data.labels = d.labels;
+    chartM1LevelInstance.data.datasets[0].data = d.m1;
+    chartM1LevelInstance.data.datasets[0].pointRadius = d.labels.length > 20 ? 1.5 : 3;
+    chartM1LevelInstance.update();
+  }
+  if(chartM1M2RatioInstance && d) {
+    chartM1M2RatioInstance.data.labels = d.labels;
+    chartM1M2RatioInstance.data.datasets[0].data = d.ratio;
+    chartM1M2RatioInstance.data.datasets[0].pointRadius = d.labels.length > 20 ? 1.5 : 3;
+    chartM1M2RatioInstance.update();
+  }
+  if(chartMoneyInstance && d) {
+    chartMoneyInstance.data.labels = d.yoyLabels;
+    chartMoneyInstance.data.datasets[0].data = d.m1YoY;
+    chartMoneyInstance.data.datasets[1].data = d.m2YoY;
+    chartMoneyInstance.update();
+  }
+  const periodText = { '1m': '최근 1개월 (일별)', '1y': '최근 1년 (월별)', '5y': '최근 5년 (분기/연별)', '10y': '최근 10년 (연별)' }[h];
+  const m1T = document.getElementById('m1LevelTitle');
+  if(m1T) m1T.textContent = `M1 통화량 잔액 추이 (조원 - ${periodText})`;
+  const ratioT = document.getElementById('m1m2RatioTitle');
+  if(ratioT) ratioT.textContent = `단기유동자금비율 (M1/M2, % - ${periodText})`;
+  const yoyT = document.getElementById('moneyYoYTitle');
+  if(yoyT) yoyT.textContent = `M1 · M2 전년비 증가율(%) 추이 (${periodText})`;
+}
+
 function initMacroCharts() {
   const colors = getChartColors();
   Chart.defaults.font.family = "'Inter', 'Noto Sans KR', sans-serif";
@@ -2220,11 +2496,11 @@ function initMacroCharts() {
   chartFxInstance = new Chart(document.getElementById('chartFx'), {
     type: 'line',
     data: {
-      labels: monthsMacro,
+      labels: fxTimeData['1y'].labels,
       datasets: [
-        { label: 'USD/KRW', data: [1390,1400,1410,1420,1405,1395,1410,1430,1420,1400,1345,1341], borderColor: '#79c0ff', backgroundColor: '#79c0ff22', yAxisID: 'y', tension: .3, pointRadius: 2 },
-        { label: 'JPY/KRW (100엔)', data: [905,910,900,895,890,885,880,878,875,873,872,871], borderColor: '#f85149', backgroundColor: '#f8514922', yAxisID: 'y1', tension: .3, pointRadius: 2 },
-        { label: 'CNY/KRW', data: [196,197,198,199,200,199,201,202,203,202,201,201], borderColor: '#d29922', backgroundColor: '#d2992222', yAxisID: 'y1', tension: .3, pointRadius: 2 }
+        { label: 'USD/KRW', data: fxTimeData['1y'].usd, borderColor: '#79c0ff', backgroundColor: '#79c0ff22', yAxisID: 'y', tension: .3, pointRadius: 2 },
+        { label: 'JPY/KRW (100엔)', data: fxTimeData['1y'].jpy, borderColor: '#f85149', backgroundColor: '#f8514922', yAxisID: 'y1', tension: .3, pointRadius: 2 },
+        { label: 'CNY/KRW', data: fxTimeData['1y'].cny, borderColor: '#d29922', backgroundColor: '#d2992222', yAxisID: 'y1', tension: .3, pointRadius: 2 }
       ]
     },
     options: {
@@ -2241,8 +2517,8 @@ function initMacroCharts() {
   chartGoldInstance = new Chart(document.getElementById('chartGold'), {
     type: 'line',
     data: {
-      labels: monthsMacro,
-      datasets: [{ label: '금가격 (원/g 환산)', data: [176570,180930,185890,190850,191990,195110,207600,207790,203620,197600,191140,189700], borderColor: '#d29922', backgroundColor: '#d2992222', tension: .3, pointRadius: 2, fill: true }]
+      labels: cmTimeData['1y'].labels,
+      datasets: [{ label: '금가격 (원/g 환산)', data: cmTimeData['1y'].gold, borderColor: '#d29922', backgroundColor: '#d2992222', tension: .3, pointRadius: 2, fill: true }]
     },
     options: baseOpt
   });
@@ -2251,8 +2527,8 @@ function initMacroCharts() {
   chartSilverInstance = new Chart(document.getElementById('chartSilver'), {
     type: 'line',
     data: {
-      labels: monthsMacro,
-      datasets: [{ label: '은가격 (원/g 환산)', data: [1520,1621,1722,1872,1987,2153,2448,2666,2740,2791,2811,2799], borderColor: '#8b949e', backgroundColor: '#8b949e22', tension: .3, pointRadius: 2, fill: true }]
+      labels: cmTimeData['1y'].labels,
+      datasets: [{ label: '은가격 (원/g 환산)', data: cmTimeData['1y'].silver, borderColor: '#8b949e', backgroundColor: '#8b949e22', tension: .3, pointRadius: 2, fill: true }]
     },
     options: baseOpt
   });
@@ -2261,31 +2537,28 @@ function initMacroCharts() {
   chartOilInstance = new Chart(document.getElementById('chartOil'), {
     type: 'line',
     data: {
-      labels: monthsMacro,
-      datasets: [{ label: 'WTI 원유 ($/bbl)', data: [62,65,68,70,74,78,82,88,92,97,102,100], borderColor: '#a371f7', backgroundColor: '#a371f71a', tension: .3, pointRadius: 2, fill: true }]
+      labels: cmTimeData['1y'].labels,
+      datasets: [{ label: 'WTI 원유 ($/bbl)', data: cmTimeData['1y'].oil, borderColor: '#a371f7', backgroundColor: '#a371f71a', tension: .3, pointRadius: 2, fill: true }]
     },
     options: baseOpt
   });
 
   // 7) Money Levels
-  const m1Level = [1300,1315,1332,1345,1357.8,1370,1376,1385,1402.9,1409,1416,1423];
   chartM1LevelInstance = new Chart(document.getElementById('chartM1Level'), {
     type: 'line',
     data: {
-      labels: monthsMacro,
-      datasets: [{ label: 'M1 잔액 (조원)', data: m1Level, borderColor: '#388bfd', backgroundColor: '#388bfd22', tension: .3, pointRadius: 2, fill: true }]
+      labels: moneyTimeData['1y'].labels,
+      datasets: [{ label: 'M1 잔액 (조원)', data: moneyTimeData['1y'].m1, borderColor: '#388bfd', backgroundColor: '#388bfd22', tension: .3, pointRadius: 2, fill: true }]
     },
     options: baseOpt
   });
 
   // 8) M1/M2 Ratio
-  const m2Level = [3950,3980,4020,4080,4114,4140,4165,4190,4213,4240,4265,4290];
-  const m1m2Ratio = m1Level.map((v,i) => +(v / m2Level[i] * 100).toFixed(2));
   chartM1M2RatioInstance = new Chart(document.getElementById('chartM1M2Ratio'), {
     type: 'line',
     data: {
-      labels: monthsMacro,
-      datasets: [{ label: 'M1/M2 비율 (%)', data: m1m2Ratio, borderColor: '#39c5cf', backgroundColor: '#39c5cf22', tension: .3, pointRadius: 2, fill: true }]
+      labels: moneyTimeData['1y'].labels,
+      datasets: [{ label: 'M1/M2 비율 (%)', data: moneyTimeData['1y'].ratio, borderColor: '#39c5cf', backgroundColor: '#39c5cf22', tension: .3, pointRadius: 2, fill: true }]
     },
     options: baseOpt
   });
@@ -2294,10 +2567,10 @@ function initMacroCharts() {
   chartMoneyInstance = new Chart(document.getElementById('chartMoney'), {
     type: 'bar',
     data: {
-      labels: ['25.10','25.11','25.12','26.01','26.02','26.03','26.04','26.05','26.06','26.07'],
+      labels: moneyTimeData['1y'].yoyLabels,
       datasets: [
-        { label: 'M1 전년比 (%)', data: [8.1,7.9,7.8,7.8,7.6,7.9,8.3,8.2,8.4,8.5], backgroundColor: '#388bfd' },
-        { label: 'M2 전년比 (%)', data: [8.7,7.9,6.2,5.4,4.9,5.1,5.6,5.7,5.9,6.0], backgroundColor: '#d29922' }
+        { label: 'M1 전년比 (%)', data: moneyTimeData['1y'].m1YoY, backgroundColor: '#388bfd' },
+        { label: 'M2 전년比 (%)', data: moneyTimeData['1y'].m2YoY, backgroundColor: '#d29922' }
       ]
     },
     options: baseOpt
