@@ -1,3 +1,6 @@
 26.9.13 github 연동
 
+1) git 레포터리 생성
 https://github.com/DongGyuLee76/app5_EcoIndex_git.git
+
+2) 데이터 단기/중기/장기 업데이트
