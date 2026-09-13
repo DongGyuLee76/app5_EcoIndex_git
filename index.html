@@ -680,6 +680,13 @@
   </div>
 
   <div class="header-actions">
+    <div class="ts-control-group" style="margin-right:2px;">
+      <span class="ts-label" style="font-size:11px;">차트 형태</span>
+      <div class="pill-group" id="globalChartTypeGroup" style="background:var(--surface); border:1px solid var(--border);">
+        <button class="pill-btn active" id="btnTypeLine" onclick="setGlobalChartType('line')">📈 선형</button>
+        <button class="pill-btn" id="btnTypeBar" onclick="setGlobalChartType('bar')">📊 막대</button>
+      </div>
+    </div>
     <span class="asof-badge" id="asofBadge">
       <span>📅 기준일: 2026-09-11 (스냅샷 &amp; LIVE)</span>
     </span>
@@ -1894,6 +1901,7 @@ let currentIndexKey = 'sp500';
 let currentGranularity = 'daily'; // 'daily' | 'monthly' | 'yearly'
 let currentHorizon = 'short';     // 'short' | 'mid' | 'long'
 let chartStockIndexInstance = null;
+let globalChartType = 'line';     // 'line' | 'bar'
 
 function getChartColors() {
   const isLight = document.body.getAttribute('data-theme') === 'light';
@@ -2030,20 +2038,21 @@ function updateStockIndexChart() {
   gradient.addColorStop(0, meta.color + '44');
   gradient.addColorStop(1, meta.color + '00');
 
+  const isBar = globalChartType === 'bar';
   chartStockIndexInstance = new Chart(ctx, {
-    type: 'line',
+    type: isBar ? 'bar' : 'line',
     data: {
       labels: labels,
       datasets: [{
         label: `${meta.name} (${currentGranularity.toUpperCase()} / ${currentHorizon.toUpperCase()})`,
         data: data,
         borderColor: meta.color,
-        backgroundColor: gradient,
-        borderWidth: 2.5,
-        fill: true,
-        tension: 0.25,
-        pointRadius: labels.length > 20 ? 2 : 4,
-        pointHoverRadius: 6,
+        backgroundColor: isBar ? meta.color + 'bb' : gradient,
+        borderWidth: isBar ? 1 : 2.5,
+        fill: !isBar,
+        tension: isBar ? 0 : 0.25,
+        pointRadius: isBar ? 0 : (labels.length > 20 ? 2 : 4),
+        pointHoverRadius: isBar ? 0 : 6,
         pointBackgroundColor: meta.color
       }]
     },
@@ -2143,23 +2152,25 @@ function renderComparisonChart() {
     else if(compHorizon === '5y') rawData = meta.yearly.slice(-5);
     else rawData = meta.yearly;
 
+    const isBar = globalChartType === 'bar';
     return {
       label: meta.name,
       data: normalizeBase100(rawData),
       borderColor: meta.color,
-      backgroundColor: 'transparent',
-      borderWidth: key === 'sp500' || key === 'kospi' ? 2.5 : 1.8,
-      tension: 0.25,
-      pointRadius: labels.length > 20 ? 1.5 : 3
+      backgroundColor: isBar ? meta.color + 'aa' : 'transparent',
+      borderWidth: isBar ? 1 : (key === 'sp500' || key === 'kospi' ? 2.5 : 1.8),
+      tension: isBar ? 0 : 0.25,
+      pointRadius: isBar ? 0 : (labels.length > 20 ? 1.5 : 3)
     };
   });
 
   const colors = getChartColors();
   if(chartComparisonInstance) chartComparisonInstance.destroy();
 
+  const isBarComp = globalChartType === 'bar';
   const ctx = document.getElementById('chartComparison').getContext('2d');
   chartComparisonInstance = new Chart(ctx, {
-    type: 'line',
+    type: isBarComp ? 'bar' : 'line',
     data: { labels, datasets },
     options: {
       responsive: true,
@@ -2193,12 +2204,22 @@ function renderComparisonChart() {
 
 // ==================== 6. 기준금리 및 거시 차트 초기화 ====================
 const monthsMacro = ['25.10','25.11','25.12','26.01','26.02','26.03','26.04','26.05','26.06','26.07','26.08','26.09'];
-const baseOpt = {
-  responsive: true, maintainAspectRatio: false,
-  plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 11 } } }, tooltip: { mode: 'index', intersect: false } },
-  interaction: { mode: 'index', intersect: false },
-  scales: { x: { grid: { display: false } }, y: { grid: { color: '#21262d' } } }
-};
+function getBaseOpt(colors) {
+  const c = colors || getChartColors();
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top', labels: { boxWidth: 10, font: { size: 11 }, color: c.text } },
+      tooltip: { mode: 'index', intersect: false }
+    },
+    interaction: { mode: 'index', intersect: false },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: c.text } },
+      y: { grid: { color: c.grid }, ticks: { color: c.text } }
+    }
+  };
+}
 
 let chartRatesInstance = null;
 let chartYieldCurveInstance = null;
@@ -2211,7 +2232,53 @@ let chartM1LevelInstance = null;
 let chartM1M2RatioInstance = null;
 let chartMoneyInstance = null;
 
+// ==================== 전체 차트 형태(선/막대) 전환 엔진 ====================
+let currentRatesRange = '2y';
+
+function setGlobalChartType(type) {
+  globalChartType = type;
+
+  // 1) Header toggle buttons
+  const btnLine = document.getElementById('btnTypeLine');
+  const btnBar = document.getElementById('btnTypeBar');
+  if(btnLine && btnBar) {
+    if(type === 'line') {
+      btnLine.classList.add('active');
+      btnBar.classList.remove('active');
+    } else {
+      btnLine.classList.remove('active');
+      btnBar.classList.add('active');
+    }
+  }
+
+  // 2) Re-render Stock Index Chart
+  updateStockIndexChart();
+
+  // 3) Re-render Comparison Chart
+  renderComparisonChart();
+
+  // 4) Destroy existing macro charts
+  [
+    chartRatesInstance, chartYieldCurveInstance, chartTreasuryTrendInstance,
+    chartFxInstance, chartGoldInstance, chartSilverInstance, chartOilInstance,
+    chartM1LevelInstance, chartM1M2RatioInstance, chartMoneyInstance
+  ].forEach(inst => {
+    if(inst) inst.destroy();
+  });
+
+  // 5) Re-create all macro charts fresh with new type!
+  initMacroCharts();
+
+  // 6) Re-apply currently selected horizons
+  setFxHorizon(currentFxHorizon);
+  setCmHorizon(currentCmHorizon);
+  setOilHorizon(currentOilHorizon);
+  setMoneyHorizon(currentMoneyHorizon);
+  setRatesView(currentRatesRange);
+}
+
 function setRatesView(range) {
+  currentRatesRange = range;
   const group = document.getElementById('ratesHorizonGroup');
   group.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
   const target = Array.from(group.querySelectorAll('.pill-btn')).find(b => b.textContent.includes(range));
@@ -2235,6 +2302,22 @@ function setRatesView(range) {
     chartRatesInstance.data.labels = lbls;
     chartRatesInstance.data.datasets[0].data = kr;
     chartRatesInstance.data.datasets[1].data = us;
+    if(globalChartType === 'bar') {
+      chartRatesInstance.data.datasets.forEach(ds => {
+        ds.pointRadius = 0;
+        ds.borderWidth = 1;
+        if(ds.borderColor && typeof ds.borderColor === 'string') {
+          ds.backgroundColor = ds.borderColor.length === 7 ? ds.borderColor + 'bb' : ds.borderColor;
+        }
+      });
+    } else {
+      chartRatesInstance.data.datasets[0].pointRadius = 3;
+      chartRatesInstance.data.datasets[0].borderWidth = 2;
+      chartRatesInstance.data.datasets[0].backgroundColor = '#388bfd22';
+      chartRatesInstance.data.datasets[1].pointRadius = 3;
+      chartRatesInstance.data.datasets[1].borderWidth = 2;
+      chartRatesInstance.data.datasets[1].backgroundColor = '#f8514922';
+    }
     chartRatesInstance.update();
   }
 }
@@ -2283,7 +2366,15 @@ function setFxHorizon(h) {
     chartFxInstance.data.datasets[1].data = d.jpy;
     chartFxInstance.data.datasets[2].data = d.cny;
     chartFxInstance.data.datasets.forEach(ds => {
-      ds.pointRadius = d.labels.length > 20 ? 1.5 : 3;
+      if(globalChartType === 'bar') {
+        ds.pointRadius = 0;
+        ds.borderWidth = 1;
+        if(ds.borderColor && typeof ds.borderColor === 'string') {
+          ds.backgroundColor = ds.borderColor.length === 7 ? ds.borderColor + 'bb' : ds.borderColor;
+        }
+      } else {
+        ds.pointRadius = d.labels.length > 20 ? 1.5 : 3;
+      }
     });
     chartFxInstance.update();
   }
@@ -2335,13 +2426,25 @@ function setCmHorizon(h) {
   if(chartGoldInstance && d) {
     chartGoldInstance.data.labels = d.labels;
     chartGoldInstance.data.datasets[0].data = d.gold;
-    chartGoldInstance.data.datasets[0].pointRadius = d.labels.length > 20 ? 1.5 : 3;
+    if(globalChartType === 'bar') {
+      chartGoldInstance.data.datasets[0].pointRadius = 0;
+      chartGoldInstance.data.datasets[0].borderWidth = 1;
+      chartGoldInstance.data.datasets[0].backgroundColor = '#d29922bb';
+    } else {
+      chartGoldInstance.data.datasets[0].pointRadius = d.labels.length > 20 ? 1.5 : 3;
+    }
     chartGoldInstance.update();
   }
   if(chartSilverInstance && d) {
     chartSilverInstance.data.labels = d.labels;
     chartSilverInstance.data.datasets[0].data = d.silver;
-    chartSilverInstance.data.datasets[0].pointRadius = d.labels.length > 20 ? 1.5 : 3;
+    if(globalChartType === 'bar') {
+      chartSilverInstance.data.datasets[0].pointRadius = 0;
+      chartSilverInstance.data.datasets[0].borderWidth = 1;
+      chartSilverInstance.data.datasets[0].backgroundColor = '#8b949ebb';
+    } else {
+      chartSilverInstance.data.datasets[0].pointRadius = d.labels.length > 20 ? 1.5 : 3;
+    }
     chartSilverInstance.update();
   }
   const periodText = { '1m': '최근 1개월 (일별)', '1y': '최근 1년 (월별)', '5y': '최근 5년 (분기/연별)', '10y': '최근 10년 (연별)' }[h];
@@ -2367,7 +2470,13 @@ function setOilHorizon(h) {
   if(chartOilInstance && d) {
     chartOilInstance.data.labels = d.labels;
     chartOilInstance.data.datasets[0].data = d.oil;
-    chartOilInstance.data.datasets[0].pointRadius = d.labels.length > 20 ? 1.5 : 3;
+    if(globalChartType === 'bar') {
+      chartOilInstance.data.datasets[0].pointRadius = 0;
+      chartOilInstance.data.datasets[0].borderWidth = 1;
+      chartOilInstance.data.datasets[0].backgroundColor = '#a371f7bb';
+    } else {
+      chartOilInstance.data.datasets[0].pointRadius = d.labels.length > 20 ? 1.5 : 3;
+    }
     chartOilInstance.update();
   }
   const periodText = { '1m': '최근 1개월 (일별)', '1y': '최근 1년 (월별)', '5y': '최근 5년 (분기/연별)', '10y': '최근 10년 (연별)' }[h];
@@ -2426,13 +2535,25 @@ function setMoneyHorizon(h) {
   if(chartM1LevelInstance && d) {
     chartM1LevelInstance.data.labels = d.labels;
     chartM1LevelInstance.data.datasets[0].data = d.m1;
-    chartM1LevelInstance.data.datasets[0].pointRadius = d.labels.length > 20 ? 1.5 : 3;
+    if(globalChartType === 'bar') {
+      chartM1LevelInstance.data.datasets[0].pointRadius = 0;
+      chartM1LevelInstance.data.datasets[0].borderWidth = 1;
+      chartM1LevelInstance.data.datasets[0].backgroundColor = '#388bfdbb';
+    } else {
+      chartM1LevelInstance.data.datasets[0].pointRadius = d.labels.length > 20 ? 1.5 : 3;
+    }
     chartM1LevelInstance.update();
   }
   if(chartM1M2RatioInstance && d) {
     chartM1M2RatioInstance.data.labels = d.labels;
     chartM1M2RatioInstance.data.datasets[0].data = d.ratio;
-    chartM1M2RatioInstance.data.datasets[0].pointRadius = d.labels.length > 20 ? 1.5 : 3;
+    if(globalChartType === 'bar') {
+      chartM1M2RatioInstance.data.datasets[0].pointRadius = 0;
+      chartM1M2RatioInstance.data.datasets[0].borderWidth = 1;
+      chartM1M2RatioInstance.data.datasets[0].backgroundColor = '#39c5cfbb';
+    } else {
+      chartM1M2RatioInstance.data.datasets[0].pointRadius = d.labels.length > 20 ? 1.5 : 3;
+    }
     chartM1M2RatioInstance.update();
   }
   if(chartMoneyInstance && d) {
@@ -2455,125 +2576,254 @@ function initMacroCharts() {
   Chart.defaults.font.family = "'Inter', 'Noto Sans KR', sans-serif";
   Chart.defaults.color = colors.text;
 
+  const isBar = globalChartType === 'bar';
+  const cType = isBar ? 'bar' : 'line';
+
   // 1) Rates
   chartRatesInstance = new Chart(document.getElementById('chartRates'), {
-    type: 'line',
+    type: cType,
     data: {
-      labels: monthsMacro,
+      labels: monthsMacro.slice(),
       datasets: [
-        { label: '한국 기준금리 (%)', data: [2.50,2.50,2.50,2.50,2.50,2.50,2.50,2.50,2.50,2.75,3.00,3.00], borderColor: '#388bfd', backgroundColor: '#388bfd22', tension: .3, pointRadius: 3 },
-        { label: '미국 정책금리 상단 (%)', data: [3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75], borderColor: '#f85149', backgroundColor: '#f8514922', tension: .3, pointRadius: 3, borderDash: [5,3] }
+        {
+          label: '한국 기준금리 (%)',
+          data: [2.50,2.50,2.50,2.50,2.50,2.50,2.50,2.50,2.50,2.75,3.00,3.00],
+          borderColor: '#388bfd',
+          backgroundColor: isBar ? '#388bfdbb' : '#388bfd22',
+          tension: isBar ? 0 : .3,
+          pointRadius: isBar ? 0 : 3,
+          borderWidth: isBar ? 1 : 2
+        },
+        {
+          label: '미국 정책금리 상단 (%)',
+          data: [3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75,3.75],
+          borderColor: '#f85149',
+          backgroundColor: isBar ? '#f85149bb' : '#f8514922',
+          tension: isBar ? 0 : .3,
+          pointRadius: isBar ? 0 : 3,
+          borderWidth: isBar ? 1 : 2,
+          borderDash: isBar ? [] : [5,3]
+        }
       ]
     },
-    options: baseOpt
+    options: getBaseOpt(colors)
   });
 
   // 2) Yield Curve
   chartYieldCurveInstance = new Chart(document.getElementById('chartYieldCurve'), {
-    type: 'line',
+    type: cType,
     data: {
       labels: ['3개월','1년','2년','3년','5년','7년','10년','20년','30년'],
       datasets: [{
         label: '미국 국채 만기별 수익률 (%)',
         data: [4.20, 4.30, 4.39, 4.44, 4.57, 4.68, 4.97, 5.26, 5.25],
-        borderColor: '#f85149', backgroundColor: '#f851491a', fill: true, tension: .35, pointRadius: 4, pointBackgroundColor: '#f85149'
+        borderColor: '#f85149',
+        backgroundColor: isBar ? '#f85149bb' : '#f851491a',
+        fill: !isBar,
+        tension: isBar ? 0 : .35,
+        pointRadius: isBar ? 0 : 4,
+        borderWidth: isBar ? 1 : 2,
+        pointBackgroundColor: '#f85149'
       }]
     },
-    options: baseOpt
+    options: getBaseOpt(colors)
   });
 
   // 3) 10Y Trend
   chartTreasuryTrendInstance = new Chart(document.getElementById('chartTreasuryTrend'), {
-    type: 'line',
+    type: cType,
     data: {
-      labels: monthsMacro,
-      datasets: [{ label: '美 10년 국채금리 (%)', data: [4.05,4.10,4.18,4.22,4.15,4.28,4.35,4.42,4.55,4.70,4.85,4.97], borderColor: '#388bfd', backgroundColor: '#388bfd22', tension: .3, pointRadius: 2, fill: true }]
+      labels: monthsMacro.slice(),
+      datasets: [{
+        label: '美 10년 국채금리 (%)',
+        data: [4.05,4.10,4.18,4.22,4.15,4.28,4.35,4.42,4.55,4.70,4.85,4.97],
+        borderColor: '#388bfd',
+        backgroundColor: isBar ? '#388bfdbb' : '#388bfd22',
+        tension: isBar ? 0 : .3,
+        pointRadius: isBar ? 0 : 2,
+        borderWidth: isBar ? 1 : 2,
+        fill: !isBar
+      }]
     },
-    options: baseOpt
+    options: getBaseOpt(colors)
   });
 
   // 4) FX
   chartFxInstance = new Chart(document.getElementById('chartFx'), {
-    type: 'line',
+    type: cType,
     data: {
-      labels: fxTimeData['1y'].labels,
+      labels: fxTimeData['1y'].labels.slice(),
       datasets: [
-        { label: 'USD/KRW', data: fxTimeData['1y'].usd, borderColor: '#79c0ff', backgroundColor: '#79c0ff22', yAxisID: 'y', tension: .3, pointRadius: 2 },
-        { label: 'JPY/KRW (100엔)', data: fxTimeData['1y'].jpy, borderColor: '#f85149', backgroundColor: '#f8514922', yAxisID: 'y1', tension: .3, pointRadius: 2 },
-        { label: 'CNY/KRW', data: fxTimeData['1y'].cny, borderColor: '#d29922', backgroundColor: '#d2992222', yAxisID: 'y1', tension: .3, pointRadius: 2 }
+        {
+          label: 'USD/KRW',
+          data: fxTimeData['1y'].usd.slice(),
+          borderColor: '#79c0ff',
+          backgroundColor: isBar ? '#79c0ffbb' : '#79c0ff22',
+          yAxisID: 'y',
+          tension: isBar ? 0 : .3,
+          pointRadius: isBar ? 0 : 2,
+          borderWidth: isBar ? 1 : 2
+        },
+        {
+          label: 'JPY/KRW (100엔)',
+          data: fxTimeData['1y'].jpy.slice(),
+          borderColor: '#f85149',
+          backgroundColor: isBar ? '#f85149bb' : '#f8514922',
+          yAxisID: 'y1',
+          tension: isBar ? 0 : .3,
+          pointRadius: isBar ? 0 : 2,
+          borderWidth: isBar ? 1 : 2
+        },
+        {
+          label: 'CNY/KRW',
+          data: fxTimeData['1y'].cny.slice(),
+          borderColor: '#d29922',
+          backgroundColor: isBar ? '#d29922bb' : '#d2992222',
+          yAxisID: 'y1',
+          tension: isBar ? 0 : .3,
+          pointRadius: isBar ? 0 : 2,
+          borderWidth: isBar ? 1 : 2
+        }
       ]
     },
     options: {
-      ...baseOpt,
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 10, font: { size: 11 }, color: colors.text } },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      interaction: { mode: 'index', intersect: false },
       scales: {
-        x: { grid: { display: false } },
-        y: { position: 'left', title: { display: true, text: 'USD/KRW (원)' }, grid: { color: colors.grid } },
-        y1: { position: 'right', title: { display: true, text: 'JPY (100엔) · CNY (원)' }, grid: { display: false } }
+        x: { grid: { display: false }, ticks: { color: colors.text } },
+        y: { position: 'left', title: { display: true, text: 'USD/KRW (원)', color: colors.text }, grid: { color: colors.grid }, ticks: { color: colors.text } },
+        y1: { position: 'right', title: { display: true, text: 'JPY (100엔) · CNY (원)', color: colors.text }, grid: { display: false }, ticks: { color: colors.text } }
       }
     }
   });
 
   // 5) Gold
   chartGoldInstance = new Chart(document.getElementById('chartGold'), {
-    type: 'line',
+    type: cType,
     data: {
-      labels: cmTimeData['1y'].labels,
-      datasets: [{ label: '금가격 (원/g 환산)', data: cmTimeData['1y'].gold, borderColor: '#d29922', backgroundColor: '#d2992222', tension: .3, pointRadius: 2, fill: true }]
+      labels: cmTimeData['1y'].labels.slice(),
+      datasets: [{
+        label: '금가격 (원/g 환산)',
+        data: cmTimeData['1y'].gold.slice(),
+        borderColor: '#d29922',
+        backgroundColor: isBar ? '#d29922bb' : '#d2992222',
+        tension: isBar ? 0 : .3,
+        pointRadius: isBar ? 0 : 2,
+        borderWidth: isBar ? 1 : 2,
+        fill: !isBar
+      }]
     },
-    options: baseOpt
+    options: getBaseOpt(colors)
   });
 
   // 5-1) Silver
   chartSilverInstance = new Chart(document.getElementById('chartSilver'), {
-    type: 'line',
+    type: cType,
     data: {
-      labels: cmTimeData['1y'].labels,
-      datasets: [{ label: '은가격 (원/g 환산)', data: cmTimeData['1y'].silver, borderColor: '#8b949e', backgroundColor: '#8b949e22', tension: .3, pointRadius: 2, fill: true }]
+      labels: cmTimeData['1y'].labels.slice(),
+      datasets: [{
+        label: '은가격 (원/g 환산)',
+        data: cmTimeData['1y'].silver.slice(),
+        borderColor: '#8b949e',
+        backgroundColor: isBar ? '#8b949ebb' : '#8b949e22',
+        tension: isBar ? 0 : .3,
+        pointRadius: isBar ? 0 : 2,
+        borderWidth: isBar ? 1 : 2,
+        fill: !isBar
+      }]
     },
-    options: baseOpt
+    options: getBaseOpt(colors)
   });
 
   // 6) Oil
   chartOilInstance = new Chart(document.getElementById('chartOil'), {
-    type: 'line',
+    type: cType,
     data: {
-      labels: cmTimeData['1y'].labels,
-      datasets: [{ label: 'WTI 원유 ($/bbl)', data: cmTimeData['1y'].oil, borderColor: '#a371f7', backgroundColor: '#a371f71a', tension: .3, pointRadius: 2, fill: true }]
+      labels: cmTimeData['1y'].labels.slice(),
+      datasets: [{
+        label: 'WTI 원유 ($/bbl)',
+        data: cmTimeData['1y'].oil.slice(),
+        borderColor: '#a371f7',
+        backgroundColor: isBar ? '#a371f7bb' : '#a371f71a',
+        tension: isBar ? 0 : .3,
+        pointRadius: isBar ? 0 : 2,
+        borderWidth: isBar ? 1 : 2,
+        fill: !isBar
+      }]
     },
-    options: baseOpt
+    options: getBaseOpt(colors)
   });
 
   // 7) Money Levels
   chartM1LevelInstance = new Chart(document.getElementById('chartM1Level'), {
-    type: 'line',
+    type: cType,
     data: {
-      labels: moneyTimeData['1y'].labels,
-      datasets: [{ label: 'M1 잔액 (조원)', data: moneyTimeData['1y'].m1, borderColor: '#388bfd', backgroundColor: '#388bfd22', tension: .3, pointRadius: 2, fill: true }]
+      labels: moneyTimeData['1y'].labels.slice(),
+      datasets: [{
+        label: 'M1 잔액 (조원)',
+        data: moneyTimeData['1y'].m1.slice(),
+        borderColor: '#388bfd',
+        backgroundColor: isBar ? '#388bfdbb' : '#388bfd22',
+        tension: isBar ? 0 : .3,
+        pointRadius: isBar ? 0 : 2,
+        borderWidth: isBar ? 1 : 2,
+        fill: !isBar
+      }]
     },
-    options: baseOpt
+    options: getBaseOpt(colors)
   });
 
   // 8) M1/M2 Ratio
   chartM1M2RatioInstance = new Chart(document.getElementById('chartM1M2Ratio'), {
-    type: 'line',
+    type: cType,
     data: {
-      labels: moneyTimeData['1y'].labels,
-      datasets: [{ label: 'M1/M2 비율 (%)', data: moneyTimeData['1y'].ratio, borderColor: '#39c5cf', backgroundColor: '#39c5cf22', tension: .3, pointRadius: 2, fill: true }]
+      labels: moneyTimeData['1y'].labels.slice(),
+      datasets: [{
+        label: 'M1/M2 비율 (%)',
+        data: moneyTimeData['1y'].ratio.slice(),
+        borderColor: '#39c5cf',
+        backgroundColor: isBar ? '#39c5cfbb' : '#39c5cf22',
+        tension: isBar ? 0 : .3,
+        pointRadius: isBar ? 0 : 2,
+        borderWidth: isBar ? 1 : 2,
+        fill: !isBar
+      }]
     },
-    options: baseOpt
+    options: getBaseOpt(colors)
   });
 
   // 9) Money YoY Bar
   chartMoneyInstance = new Chart(document.getElementById('chartMoney'), {
-    type: 'bar',
+    type: cType,
     data: {
-      labels: moneyTimeData['1y'].yoyLabels,
+      labels: moneyTimeData['1y'].yoyLabels.slice(),
       datasets: [
-        { label: 'M1 전년比 (%)', data: moneyTimeData['1y'].m1YoY, backgroundColor: '#388bfd' },
-        { label: 'M2 전년比 (%)', data: moneyTimeData['1y'].m2YoY, backgroundColor: '#d29922' }
+        {
+          label: 'M1 전년比 (%)',
+          data: moneyTimeData['1y'].m1YoY.slice(),
+          borderColor: '#388bfd',
+          backgroundColor: isBar ? '#388bfdbb' : '#388bfd22',
+          tension: isBar ? 0 : .3,
+          pointRadius: isBar ? 0 : 3,
+          borderWidth: isBar ? 1 : 2
+        },
+        {
+          label: 'M2 전년比 (%)',
+          data: moneyTimeData['1y'].m2YoY.slice(),
+          borderColor: '#d29922',
+          backgroundColor: isBar ? '#d29922bb' : '#d2992222',
+          tension: isBar ? 0 : .3,
+          pointRadius: isBar ? 0 : 3,
+          borderWidth: isBar ? 1 : 2
+        }
       ]
     },
-    options: baseOpt
+    options: getBaseOpt(colors)
   });
 }
 
