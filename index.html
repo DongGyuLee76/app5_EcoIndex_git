@@ -662,6 +662,51 @@
     50% { transform: scale(1.3); opacity: 1; }
     100% { transform: scale(0.9); opacity: 0.7; }
   }
+
+  /* Live Updated Highlight Animation */
+  .live-highlight-updated {
+    animation: livePulseGlow 1.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes livePulseGlow {
+    0% {
+      background-color: rgba(56, 139, 253, 0.35) !important;
+      box-shadow: 0 0 16px rgba(56, 139, 253, 0.5) !important;
+      transform: scale(1.02);
+    }
+    100% {
+      background-color: transparent;
+      box-shadow: none;
+      transform: scale(1);
+    }
+  }
+
+  /* Floating Toast Notification */
+  .toast-notification {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface-card);
+    color: var(--text-primary);
+    border: 1px solid var(--accent);
+    box-shadow: var(--shadow-lg), 0 0 20px rgba(56, 139, 253, 0.2);
+    border-radius: var(--radius-md);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+  }
+  .toast-notification.show {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
 </style>
 </head>
 
@@ -2827,74 +2872,229 @@ function initMacroCharts() {
   });
 }
 
-// ==================== 7. 실시간 데이터 갱신 (Fetch APIs) ====================
+// ==================== 7. 실시간 데이터 갱신 (Fetch APIs & Multi-Tier Fallback) ====================
 let lastUsdKrw = 1341;
+
+function showLiveToast(message, isError = false) {
+  let toast = document.getElementById('liveToast');
+  if(!toast) {
+    toast = document.createElement('div');
+    toast.id = 'liveToast';
+    toast.className = 'toast-notification';
+    document.body.appendChild(toast);
+  }
+  toast.style.borderColor = isError ? 'var(--up)' : 'var(--accent)';
+  toast.innerHTML = (isError ? '⚠️ ' : '⚡ ') + message;
+  toast.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 4000);
+}
+
+function flashUpdatedElements(elementIds) {
+  elementIds.forEach(id => {
+    const el = document.getElementById(id);
+    if(el) {
+      el.classList.remove('live-highlight-updated');
+      void el.offsetWidth; // Force reflow
+      el.classList.add('live-highlight-updated');
+    }
+  });
+}
 
 async function refreshLatestData() {
   const btn = document.getElementById('refreshBtn');
   const label = document.getElementById('refreshBtnLabel');
-  btn.disabled = true;
-  btn.classList.add('spinning');
-  label.textContent = '실시간 조회 중...';
+  if(btn) {
+    btn.disabled = true;
+    btn.classList.add('spinning');
+  }
+  if(label) label.textContent = '실시간 조회 중...';
 
   let fxSuccess = false;
   let metalSuccess = false;
+  let fxSource = '';
+  let metalSource = '';
+  const updatedIds = [];
 
-  // 1) FX: frankfurter.app
+  // 1) FX Fetch with 3-Tier Resilient Fallback
   try {
-    const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=KRW,JPY,CNY,EUR');
-    if(res.ok) {
-      const data = await res.json();
-      const usdkrw = data.rates.KRW;
-      const jpykrw100 = (usdkrw / data.rates.JPY) * 100;
-      const cnykrw = usdkrw / data.rates.CNY;
-      const eurkrw = usdkrw / data.rates.EUR;
+    let usdkrw, jpykrw100, cnykrw, eurkrw;
+
+    // Tier 1: frankfurter.dev (Official ECB)
+    try {
+      const res = await fetch('https://api.frankfurter.dev/v1/latest?from=USD&to=KRW,JPY,CNY,EUR');
+      if(res.ok) {
+        const data = await res.json();
+        usdkrw = data.rates.KRW;
+        jpykrw100 = (usdkrw / data.rates.JPY) * 100;
+        cnykrw = usdkrw / data.rates.CNY;
+        eurkrw = usdkrw / data.rates.EUR;
+        fxSource = 'Frankfurter/ECB';
+      }
+    } catch(e1) {
+      console.warn('Tier 1 (Frankfurter) unavailable, trying Tier 2 (Open Exchange Rates)...', e1);
+    }
+
+    // Tier 2: Open Exchange Rates
+    if(!usdkrw) {
+      try {
+        const res = await fetch('https://open.er-api.com/v6/latest/USD');
+        if(res.ok) {
+          const data = await res.json();
+          usdkrw = data.rates.KRW;
+          jpykrw100 = (usdkrw / data.rates.JPY) * 100;
+          cnykrw = usdkrw / data.rates.CNY;
+          eurkrw = usdkrw / data.rates.EUR;
+          fxSource = 'Open Exchange Rates';
+        }
+      } catch(e2) {
+        console.warn('Tier 2 unavailable, trying Tier 3 (JSDelivr CDN)...', e2);
+      }
+    }
+
+    // Tier 3: JSDelivr Currency API
+    if(!usdkrw) {
+      const res = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json');
+      if(res.ok) {
+        const data = await res.json();
+        usdkrw = data.usd.krw;
+        jpykrw100 = (usdkrw / data.usd.jpy) * 100;
+        cnykrw = usdkrw / data.usd.cny;
+        eurkrw = usdkrw / data.usd.eur;
+        fxSource = 'Currency-API CDN';
+      }
+    }
+
+    if(usdkrw) {
       lastUsdKrw = usdkrw;
 
-      ['card-usdkrw', 'fx-usdkrw', 'ticker-usdkrw'].forEach(id => {
+      ['card-usdkrw', 'fx-usdkrw'].forEach(id => {
         const el = document.getElementById(id);
         if(el) el.innerHTML = `${fmt(usdkrw, 0)}<span class="metric-unit">원</span>`;
+        updatedIds.push(id);
       });
+
+      const tickerEl = document.getElementById('ticker-usdkrw');
+      if(tickerEl) {
+        tickerEl.textContent = `${fmt(usdkrw, 0)}원`;
+        updatedIds.push('ticker-usdkrw');
+      }
+
       const jpyEl = document.getElementById('fx-jpykrw');
-      if(jpyEl) jpyEl.innerHTML = `${fmt(jpykrw100, 1)}<span class="metric-unit">원</span>`;
+      if(jpyEl) {
+        jpyEl.innerHTML = `${fmt(jpykrw100, 1)}<span class="metric-unit">원</span>`;
+        updatedIds.push('fx-jpykrw');
+      }
+
       const cnyEl = document.getElementById('fx-cnykrw');
-      if(cnyEl) cnyEl.innerHTML = `${fmt(cnykrw, 1)}<span class="metric-unit">원</span>`;
+      if(cnyEl) {
+        cnyEl.innerHTML = `${fmt(cnykrw, 1)}<span class="metric-unit">원</span>`;
+        updatedIds.push('fx-cnykrw');
+      }
+
       const eurEl = document.getElementById('fx-eurkrw');
-      if(eurEl) eurEl.innerHTML = `${fmt(eurkrw, 0)}<span class="metric-unit">원</span>`;
+      if(eurEl) {
+        eurEl.innerHTML = `${fmt(eurkrw, 0)}<span class="metric-unit">원</span>`;
+        updatedIds.push('fx-eurkrw');
+      }
+
+      const cardSub = document.getElementById('card-usdkrw-sub');
+      if(cardSub) cardSub.textContent = `${fxSource} 실시간 연동`;
 
       const tsEl = document.getElementById('fxUpdatedTimestamp');
-      if(tsEl) tsEl.textContent = `※ ${new Date().toLocaleTimeString('ko-KR')} 기준 실시간 환율 (Frankfurter/ECB API) 반영됨`;
+      if(tsEl) tsEl.textContent = `※ ${new Date().toLocaleTimeString('ko-KR')} 기준 실시간 환율 (${fxSource}) 반영됨`;
+
+      // Update FX timeseries latest values
+      if(typeof fxTimeData !== 'undefined' && fxTimeData['1m']) {
+        fxTimeData['1m'].usd[fxTimeData['1m'].usd.length - 1] = Math.round(usdkrw);
+        fxTimeData['1m'].jpy[fxTimeData['1m'].jpy.length - 1] = Math.round(jpykrw100);
+        fxTimeData['1m'].cny[fxTimeData['1m'].cny.length - 1] = Math.round(cnykrw);
+        if(typeof setFxHorizon === 'function' && typeof currentFxHorizon !== 'undefined') {
+          setFxHorizon(currentFxHorizon);
+        }
+      }
 
       fxSuccess = true;
     }
   } catch(e) {
-    console.warn('FX API update error (local origin or network):', e);
+    console.warn('FX API update error:', e);
   }
 
-  // 2) Gold/Silver: goldprice.org
+  // 2) Metals Fetch with Resilient CDN Feed
   try {
-    const res2 = await fetch('https://data-asg.goldprice.org/dbXRates/USD');
-    if(res2.ok) {
-      const data2 = await res2.json();
-      const item = data2.items[0];
-      const goldUsd = item.xauPrice;
-      const silverUsd = item.xagPrice;
+    let goldUsd, silverUsd;
+    try {
+      const res2 = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json');
+      if(res2.ok) {
+        const data2 = await res2.json();
+        if(data2.usd && data2.usd.xau) {
+          goldUsd = 1 / data2.usd.xau;
+          silverUsd = 1 / data2.usd.xag;
+          metalSource = 'Currency-API Global Feed';
+        }
+      }
+    } catch(e1) {
+      console.warn('Metals Tier 1 failed, trying Tier 2 (KRW API)...', e1);
+    }
 
+    if(!goldUsd) {
+      try {
+        const res3 = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/krw.json');
+        if(res3.ok) {
+          const data3 = await res3.json();
+          if(data3.krw && data3.krw.xau) {
+            const goldKrwPerOz = 1 / data3.krw.xau;
+            const silverKrwPerOz = 1 / data3.krw.xag;
+            goldUsd = goldKrwPerOz / lastUsdKrw;
+            silverUsd = silverKrwPerOz / lastUsdKrw;
+            metalSource = 'KRW Currency Feed';
+          }
+        }
+      } catch(e2) {
+        console.warn('Metals Tier 2 failed:', e2);
+      }
+    }
+
+    if(goldUsd) {
       const goldKrwPerG = (goldUsd * lastUsdKrw) / 31.1035;
       const silverKrwPerG = (silverUsd * lastUsdKrw) / 31.1035;
 
       ['card-gold', 'cm-gold'].forEach(id => {
         const el = document.getElementById(id);
         if(el) el.innerHTML = `${fmt(goldKrwPerG, 0)}<span class="metric-unit">원/g</span>`;
+        updatedIds.push(id);
       });
-      const silvEl = document.getElementById('cm-silver');
-      if(silvEl) silvEl.innerHTML = `${fmt(silverKrwPerG, 0)}<span class="metric-unit">원/g</span>`;
 
+      const silvEl = document.getElementById('cm-silver');
+      if(silvEl) {
+        silvEl.innerHTML = `${fmt(silverKrwPerG, 0)}<span class="metric-unit">원/g</span>`;
+        updatedIds.push('cm-silver');
+      }
+
+      const gUsdEl = document.getElementById('cm-gold-usd');
+      if(gUsdEl) gUsdEl.textContent = `$${fmt(goldUsd, 0)}/oz 실시간 시세`;
+      const cardGUsd = document.getElementById('card-gold-usd');
+      if(cardGUsd) cardGUsd.textContent = `$${fmt(goldUsd, 0)}/oz 실시간 시세`;
+
+      const sUsdEl = document.getElementById('cm-silver-usd');
+      if(sUsdEl) sUsdEl.textContent = `$${fmt(silverUsd, 1)}/oz 실시간 시세`;
+
+      const donVal = (goldKrwPerG * 3.75) / 10000;
       const donEl = document.getElementById('cm-gold-don');
       const donElCard = document.getElementById('card-gold-don');
-      const donVal = (goldKrwPerG * 3.75) / 10000;
       if(donEl) donEl.innerHTML = `약 ${fmt(donVal, 0)}<span class="metric-unit">만원</span>`;
       if(donElCard) donElCard.textContent = `국내 1돈(3.75g) 약 ${fmt(donVal, 0)}만원`;
+
+      // Update Commodity timeseries latest values
+      if(typeof cmTimeData !== 'undefined' && cmTimeData['1m']) {
+        cmTimeData['1m'].gold[cmTimeData['1m'].gold.length - 1] = Math.round(goldKrwPerG);
+        cmTimeData['1m'].silver[cmTimeData['1m'].silver.length - 1] = Math.round(silverKrwPerG);
+        if(typeof setCmHorizon === 'function' && typeof currentCmHorizon !== 'undefined') {
+          setCmHorizon(currentCmHorizon);
+        }
+      }
 
       metalSuccess = true;
     }
@@ -2902,18 +3102,28 @@ async function refreshLatestData() {
     console.warn('Metal API update error:', e);
   }
 
+  // 3) UI Status & Toast Notification
   const badge = document.getElementById('asofBadge');
-  if(badge) {
-    if(fxSuccess || metalSuccess) {
-      badge.innerHTML = `<span>⚡ 실시간 갱신: ${new Date().toLocaleTimeString('ko-KR')} (환율·귀금속 LIVE)</span>`;
-    } else {
-      badge.innerHTML = `<span>📅 기준일: 2026-09-11 (스냅샷 보존 / 로컬 차단 시 스냅샷 유지)</span>`;
+  const nowStr = new Date().toLocaleTimeString('ko-KR');
+
+  if(fxSuccess || metalSuccess) {
+    if(badge) {
+      badge.innerHTML = `<span>⚡ 실시간 갱신: ${nowStr} (환율·귀금속 LIVE)</span>`;
     }
+    flashUpdatedElements(updatedIds);
+    showLiveToast('실시간 금융 데이터 갱신 완료 (환율 4종 · 금/은 시세 LIVE 반영)');
+  } else {
+    if(badge) {
+      badge.innerHTML = `<span>📅 기준일: 2026-09-11 (오프라인 / 스냅샷 유지)</span>`;
+    }
+    showLiveToast('네트워크 연결 상태를 확인해주세요. (기존 스냅샷 유지)', true);
   }
 
-  btn.disabled = false;
-  btn.classList.remove('spinning');
-  label.textContent = '실시간 데이터 갱신';
+  if(btn) {
+    btn.disabled = false;
+    btn.classList.remove('spinning');
+  }
+  if(label) label.textContent = '실시간 데이터 갱신';
 }
 
 // Window load init
@@ -2923,6 +3133,8 @@ window.addEventListener('DOMContentLoaded', () => {
   initMacroCharts();
 });
 </script>
+
+<div class="toast-notification" id="liveToast"></div>
 
 </body>
 </html>
